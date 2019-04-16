@@ -9,6 +9,7 @@
 /dev/block/vdc               u:object_r:userdata_block_device:s0
 /dev/block/vdd               u:object_r:metadata_block_device:s0
 /dev/block/vde               u:object_r:system_block_device:s0
+/dev/block/zram0             u:object_r:swap_block_device:s0
 
 /dev/goldfish_pipe           u:object_r:qemu_device:s0
 /dev/goldfish_sync           u:object_r:qemu_device:s0
@@ -27,6 +28,7 @@
 /vendor/bin/dhcpclient       u:object_r:dhcpclient_exec:s0
 /vendor/bin/dhcpserver       u:object_r:dhcpserver_exec:s0
 /vendor/bin/hostapd_nohidl   u:object_r:hostapd_nohidl_exec:s0
+/vendor/bin/netmgr           u:object_r:netmgr_exec:s0
 
 /vendor/bin/hw/android\.hardware\.drm@1\.0-service\.widevine          u:object_r:hal_drm_widevine_exec:s0
 /vendor/bin/hw/android\.hardware\.drm@1\.1-service\.widevine          u:object_r:hal_drm_widevine_exec:s0

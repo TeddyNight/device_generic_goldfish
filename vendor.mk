@@ -106,6 +106,8 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_PROPERTY_OVERRIDES += ro.hardware.power=ranchu
 
+PRODUCT_PROPERTY_OVERRIDES += persist.sys.zram_enabled=1 \
+
 PRODUCT_PACKAGES += \
     camera.device@1.0-impl \
     android.hardware.camera.provider@2.4-service \
@@ -124,6 +126,7 @@ PRODUCT_PACKAGES += \
 	hostapd \
 	hostapd_nohidl \
 	ipv6proxy \
+	netmgr \
 	wpa_supplicant \
 
 # Needed for /system/priv-app/SdkSetup/SdkSetup.apk to pass CTS android.permission2.cts.PrivappPermissionsTest.
