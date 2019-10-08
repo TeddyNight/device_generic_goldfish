@@ -21,10 +21,12 @@ cc_binary {
         "libbase",
         "libcutils",
         "libhidlbase",
-        "libhidltransport",
-        "libhwbinder",
         "libutils",
         "android.hardware.health@2.0",
     ],
     header_libs: ["libhealthd_headers"],
+
+    overrides: [
+        "healthd",
+    ],
 }
