@@ -18,11 +18,27 @@
 #
 
 ifeq ($(QEMU_DISABLE_AVB),true)
-PRODUCT_COPY_FILES += \
-    device/generic/goldfish/data/etc/dummy.vbmeta.img:$(PRODUCT_OUT)/vbmeta.img \
-    device/generic/goldfish/fstab.ranchu.initrd.noavb:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
-    device/generic/goldfish/fstab.ranchu.noavb:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu
+  ifeq ($(QEMU_USE_SYSTEM_EXT_PARTITIONS),true)
+    PRODUCT_COPY_FILES += \
+      device/generic/goldfish/data/etc/dummy.vbmeta.img:$(PRODUCT_OUT)/vbmeta.img \
+      device/generic/goldfish/fstab.ranchu.initrd.noavb.ex:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
+      device/generic/goldfish/fstab.ranchu.noavb.ex:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu
+  else
+    PRODUCT_COPY_FILES += \
+      device/generic/goldfish/data/etc/dummy.vbmeta.img:$(PRODUCT_OUT)/vbmeta.img \
+      device/generic/goldfish/fstab.ranchu.initrd.noavb:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
+      device/generic/goldfish/fstab.ranchu.noavb:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu
+  endif
 endif
+
+ifeq ($(QEMU_USE_SYSTEM_EXT_PARTITIONS),true)
+PRODUCT_COPY_FILES += \
+    device/generic/goldfish/fstab.ranchu.initrd.ex:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
+    device/generic/goldfish/fstab.ranchu.ex:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu
+endif
+
+
+DISABLE_RILD_OEM_HOOK := true
 
 # Device modules
 PRODUCT_PACKAGES += \
@@ -34,6 +50,7 @@ PRODUCT_PACKAGES += \
     lib_renderControl_enc \
     libEGL_emulation \
     libGLESv2_enc \
+    libandroidemu \
     libvulkan_enc \
     libOpenglCodecCommon \
     libOpenglSystemCommon \
@@ -69,10 +86,12 @@ PRODUCT_PACKAGES += \
     android.hardware.wifi@1.0-service \
     android.hardware.biometrics.fingerprint@2.1-service \
     sh_vendor \
+    ip_vendor \
     iw_vendor \
     audio.r_submix.default \
     local_time.default \
-    SdkSetup
+    SdkSetup \
+    MultiDisplayProvider
 
 PRODUCT_PACKAGES += \
     android.hardware.audio@4.0-impl:32 \
@@ -85,8 +104,8 @@ PRODUCT_PACKAGES += \
     android.hardware.health@2.0-service.goldfish
 
 PRODUCT_PACKAGES += \
-    android.hardware.keymaster@3.0-impl \
-    android.hardware.keymaster@3.0-service
+    android.hardware.keymaster@4.0-impl \
+    android.hardware.keymaster@4.0-service
 
 PRODUCT_PACKAGES += \
     DisplayCutoutEmulationEmu01Overlay
@@ -105,12 +124,13 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.drm@1.0-service \
     android.hardware.drm@1.0-impl \
-    android.hardware.drm@1.1-service.clearkey \
-    android.hardware.drm@1.1-service.widevine
+    android.hardware.drm@1.2-service.clearkey \
+    android.hardware.drm@1.2-service.widevine
 
 PRODUCT_PACKAGES += \
     android.hardware.power@1.1-service.ranchu \
 
+PRODUCT_PROPERTY_OVERRIDES += ro.control_privapp_permissions=enforce
 PRODUCT_PROPERTY_OVERRIDES += ro.hardware.power=ranchu
 
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.zram_enabled=1 \
@@ -127,23 +147,29 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	createns \
 	dhcpclient \
-	dhcpserver \
 	execns \
 	hostapd \
 	hostapd_nohidl \
-	ipv6proxy \
 	netmgr \
+	wifi_forwarder \
 	wpa_supplicant \
+
+PRODUCT_PACKAGES += android.hardware.thermal@2.0-service.mock
 
 # Needed for /system/priv-app/SdkSetup/SdkSetup.apk to pass CTS android.permission2.cts.PrivappPermissionsTest.
 PRODUCT_COPY_FILES += \
     device/generic/goldfish/data/etc/permissions/privapp-permissions-goldfish.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/permissions/privapp-permissions-goldfish.xml
+
+# Goldfish does not support ION needed for Codec 2.0
+PRODUCT_PROPERTY_OVERRIDES += \
+    debug.stagefright.ccodec=0
 
 DEVICE_MANIFEST_FILE := device/generic/goldfish/manifest.xml
 
 PRODUCT_COPY_FILES += \
     device/generic/goldfish/fstab.ranchu.initrd:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
     device/generic/goldfish/data/etc/apns-conf.xml:data/misc/apns/apns-conf.xml \
+    device/generic/goldfish/data/etc/local.prop:data/local.prop \
     device/generic/goldfish/init.ranchu-core.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.ranchu-core.sh \
     device/generic/goldfish/init.ranchu-net.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.ranchu-net.sh \
     device/generic/goldfish/wifi/init.wifi.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.wifi.sh \
@@ -174,7 +200,8 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/camera/media_profiles.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_profiles_V1_0.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_audio.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_telephony.xml \
-    device/generic/goldfish/camera/media_codecs_google_video.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_video.xml \
+    device/generic/goldfish/camera/media_codecs_google_video_default.xml:data/vendor/etc/media_codecs_google_video_default.xml \
+    device/generic/goldfish/camera/media_codecs_google_video_v2.xml:data/vendor/etc/media_codecs_google_video_v2.xml \
     device/generic/goldfish/camera/media_codecs.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs.xml \
     device/generic/goldfish/camera/media_codecs_performance.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_performance.xml \
     frameworks/native/data/etc/android.hardware.touchscreen.multitouch.jazzhand.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml \
@@ -182,6 +209,9 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.camera.autofocus.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.autofocus.xml \
     frameworks/native/data/etc/android.hardware.camera.full.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.full.xml \
     frameworks/native/data/etc/android.hardware.fingerprint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.fingerprint.xml \
+    frameworks/native/data/etc/android.hardware.vulkan.level-1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.level.xml \
+    frameworks/native/data/etc/android.hardware.vulkan.compute-0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.compute.xml \
+    frameworks/native/data/etc/android.hardware.vulkan.version-1_1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.version.xml \
     frameworks/native/data/etc/android.software.autofill.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.autofill.xml \
     frameworks/native/data/etc/android.software.verified_boot.xml:system/etc/permissions/android.software.verified_boot.xml \
     frameworks/av/media/libeffects/data/audio_effects.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_effects.xml \
@@ -191,3 +221,4 @@ PRODUCT_COPY_FILES += \
     frameworks/av/services/audiopolicy/config/r_submix_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/r_submix_audio_policy_configuration.xml \
     frameworks/av/services/audiopolicy/config/audio_policy_volumes.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_volumes.xml \
     frameworks/av/services/audiopolicy/config/default_volume_tables.xml:$(TARGET_COPY_OUT_VENDOR)/etc/default_volume_tables.xml \
+    frameworks/av/services/audiopolicy/config/surround_sound_configuration_5_0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/surround_sound_configuration_5_0.xml \
