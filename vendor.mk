@@ -81,6 +81,9 @@ PRODUCT_PACKAGES += \
     audio.r_submix.default \
     local_time.default \
     SdkSetup \
+    libstagefrighthw \
+    libstagefright_goldfish_vpxdec \
+    libstagefright_goldfish_avcdec \
     MultiDisplayProvider
 
 ifneq ($(BUILD_EMULATOR_OPENGL),false)
@@ -95,8 +98,8 @@ PRODUCT_PACKAGES += \
 endif
 
 PRODUCT_PACKAGES += \
-    android.hardware.audio@4.0-impl:32 \
-    android.hardware.audio.effect@4.0-impl:32 \
+    android.hardware.audio@5.0-impl:32 \
+    android.hardware.audio.effect@5.0-impl:32 \
     android.hardware.broadcastradio@1.1-service \
     android.hardware.broadcastradio@1.0-impl \
     android.hardware.soundtrigger@2.0-impl
@@ -166,7 +169,29 @@ PRODUCT_PACKAGES += \
 	wifi_forwarder \
 	wpa_supplicant \
 
-PRODUCT_PACKAGES += android.hardware.thermal@2.0-service.mock
+# Thermal
+PRODUCT_PACKAGES += \
+	android.hardware.thermal@2.0-service.mock
+
+# Atrace
+PRODUCT_PACKAGES += \
+	android.hardware.atrace@1.0-service
+
+# Vibrator
+PRODUCT_PACKAGES += \
+	android.hardware.vibrator-service.example
+
+# Authsecret
+PRODUCT_PACKAGES += \
+    android.hardware.authsecret@1.0-service
+
+# Input Classifier HAL
+PRODUCT_PACKAGES += \
+    android.hardware.input.classifier@1.0-service.default
+
+# power stats
+PRODUCT_PACKAGES += \
+    android.hardware.power.stats@1.0-service.mock
 
 # Goldfish does not support ION needed for Codec 2.0
 PRODUCT_PROPERTY_OVERRIDES += \
