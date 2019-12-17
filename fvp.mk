@@ -23,8 +23,11 @@ PRODUCT_FULL_TREBLE_OVERRIDE := true
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/mainline_system.mk)
 
-PRODUCT_ARTIFACT_PATH_REQUIREMENT_WHITELIST += \
-    root/init.zygote64_32.rc \
+#
+# All components inherited here go to system_ext image
+#
+$(call inherit-product, $(SRC_TARGET_DIR)/product/handheld_system_ext.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/telephony_system_ext.mk)
 
 #
 # All components inherited here go to product image
@@ -69,7 +72,6 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/fvpbase/fstab.fvpbase:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.fvpbase \
     device/generic/goldfish/fvpbase/fstab.fvpbase.initrd:$(TARGET_COPY_OUT_RAMDISK)/fstab.fvpbase \
     device/generic/goldfish/fvpbase/init.fvpbase.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.fvpbase.rc \
-    device/generic/goldfish/fvpbase/init.insmod.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.insmod.sh \
     frameworks/av/services/audiopolicy/config/audio_policy_configuration_generic.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_configuration.xml \
     frameworks/av/services/audiopolicy/config/primary_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/primary_audio_policy_configuration.xml \
     frameworks/av/services/audiopolicy/config/r_submix_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/r_submix_audio_policy_configuration.xml \
@@ -86,18 +88,13 @@ PRODUCT_REQUIRES_INSECURE_EXECMEM_FOR_SWIFTSHADER := true
 # It's almost always faster to dexopt on the host even in eng builds.
 WITH_DEXPREOPT_BOOT_IMG_AND_SYSTEM_SERVER_ONLY := false
 
-BOARD_VENDOR_KERNEL_MODULES := \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/amba-clcd.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/ambakmi.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/armmmci.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/cfbcopyarea.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/cfbfillrect.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/cfbimgblt.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/fb.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/fixed.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/mmc_block.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/mmc_core.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/mousedev.ko \
-    $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/psmouse.ko
-
 DEVICE_MANIFEST_FILE := device/generic/goldfish/fvpbase/manifest.xml
+
+# Normally, the bootloader is supposed to concatenate the Android initramfs
+# and the initramfs for the kernel modules and let the kernel combine
+# them. However, the bootloader that we're using with FVP (U-Boot) doesn't
+# support concatenation, so we implement it in the build system.
+droid: $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/ramdisk.img
+
+$(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/ramdisk.img: $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/ramdisk.img $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/initramfs.img
+	gzip -dc $^ > $@
