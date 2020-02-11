@@ -36,7 +36,7 @@
 #  define  D(...)   ((void)0)
 #endif
 
-#include "qemu_pipe.h"
+#include "qemud.h"
 
 int
 qemu_check(void)
@@ -78,8 +78,7 @@ qemu_channel_open_qemud_pipe( QemuChannel*  channel,
     int   fd;
     char  pipe_name[512];
 
-    snprintf(pipe_name, sizeof(pipe_name), "qemud:%s", name);
-    fd = qemu_pipe_open(pipe_name);
+    fd = qemud_channel_open(name);
     if (fd < 0) {
         D("no qemud pipe: %s", strerror(errno));
         return -1;
@@ -89,43 +88,6 @@ qemu_channel_open_qemud_pipe( QemuChannel*  channel,
     channel->fd       = fd;
     return 0;
 }
-
-static int
-qemu_channel_open_qemud( QemuChannel*  channel,
-                         const char*   name )
-{
-    int   fd, ret, namelen = strlen(name);
-    char  answer[2];
-
-    fd = socket_local_client( "qemud",
-                              ANDROID_SOCKET_NAMESPACE_RESERVED,
-                              SOCK_STREAM );
-    if (fd < 0) {
-        D("no qemud control socket: %s", strerror(errno));
-        return -1;
-    }
-
-    /* send service name to connect */
-    if (qemu_fd_write(fd, name, namelen) != namelen) {
-        D("can't send service name to qemud: %s",
-           strerror(errno));
-        close(fd);
-        return -1;
-    }
-
-    /* read answer from daemon */
-    if (qemu_fd_read(fd, answer, 2) != 2 ||
-        answer[0] != 'O' || answer[1] != 'K') {
-        D("cant' connect to %s service through qemud", name);
-        close(fd);
-        return -1;
-    }
-
-    channel->is_qemud = 1;
-    channel->fd       = fd;
-    return 0;
-}
-
 
 static int
 qemu_channel_open_qemud_old( QemuChannel*  channel,
@@ -194,9 +156,6 @@ qemu_channel_open( QemuChannel*  channel,
 
         do {
             if (qemu_channel_open_qemud_pipe(channel, name) == 0)
-                break;
-
-            if (qemu_channel_open_qemud(channel, name) == 0)
                 break;
 
             if (qemu_channel_open_qemud_old(channel, name) == 0)

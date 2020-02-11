@@ -19,6 +19,7 @@
 
 #include "EmulatedBaseCamera.h"
 #include "QemuClient.h"
+#include "cbmanager.h"
 
 #include <cutils/properties.h>
 
@@ -169,7 +170,7 @@ public:
      * Gets number of emulated cameras.
      */
     int getEmulatedCameraNum() const {
-        return mEmulatedCameraNum;
+        return mEmulatedCameras.size();
     }
 
     /*
@@ -223,12 +224,24 @@ private:
      */
     void createQemuCameras(const std::vector<QemuCameraInfo> &qemuCameras);
 
+    std::unique_ptr<EmulatedBaseCamera> createQemuCameraImpl(
+        int halVersion,
+        const QemuCameraInfo& cameraInfo,
+        int cameraId,
+        struct hw_module_t* module);
+
     /*
      * Creates a fake camera and adds it to mEmulatedCameras. If backCamera is
      * true, it will be created as if it were a camera on the back of the phone.
      * Otherwise, it will be front-facing.
      */
     void createFakeCamera(bool backCamera);
+
+    std::unique_ptr<EmulatedBaseCamera> createFakeCameraImpl(
+        bool backCamera,
+        int halVersion,
+        int cameraId,
+        struct hw_module_t* module);
 
     /*
      * Waits till qemu-props has done setup, timeout after 500ms.
@@ -254,14 +267,11 @@ private:
     // Connection to the camera service in the emulator.
     FactoryQemuClient mQemuClient;
 
+    // API to manipulate color buffers
+    CbManager mCbManager;
+
     // Array of cameras available for the emulation.
-    EmulatedBaseCamera **mEmulatedCameras;
-
-    // Number of emulated cameras (including the fake ones).
-    int mEmulatedCameraNum;
-
-    // Number of emulated fake cameras.
-    int mFakeCameraNum;
+    std::vector<std::unique_ptr<EmulatedBaseCamera>> mEmulatedCameras;
 
     // Flags whether or not constructor has succeeded.
     bool mConstructedOK;

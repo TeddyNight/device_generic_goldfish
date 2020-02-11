@@ -26,7 +26,6 @@
 #include <sys/epoll.h>
 
 #include "utils/Log.h"
-#include "../../include/qemu_pipe.h"
 #include "nativehelper/JNIHelp.h"
 #include <nativehelper/ScopedLocalRef.h>
 #include "jni.h"
@@ -65,14 +64,14 @@ public:
         mConsumer->acquireBuffer(&bufferItem, 0);
         ANativeWindowBuffer* b = bufferItem.mGraphicBuffer->getNativeBuffer();
         if (b && b->handle) {
-            cb_handle_t* cb = (cb_handle_t*)(b->handle);
+            const cb_handle_t* cb = cb_handle_t::from(b->handle);
             if (mCb != cb->hostHandle) {
                 ALOGI("sent cb %d", cb->hostHandle);
                 mCb = cb->hostHandle;
                 uint32_t data[] = {mId, mCb};
                 std::vector<uint8_t> buf;
                 fillMsg(buf, BIND, (uint8_t*)data, sizeof(data));
-                WriteFully(gFd, buf.data(), buf.size());
+                qemu_pipe_write_fully(gFd, buf.data(), buf.size());
             }
         }
         else {
@@ -106,13 +105,13 @@ static jobject nativeCreateSurface(JNIEnv *env, jobject obj, jint id, jint width
 
 static jint nativeOpen(JNIEnv* env, jobject obj) {
     // Open pipe
-    gFd = qemu_pipe_open("multidisplay");
+    gFd = qemu_pipe_open_ns(NULL, "multidisplay", O_RDWR);
     if (gFd < 0) {
         ALOGE("Error opening multidisplay pipe %d", gFd);
     } else {
         std::vector<uint8_t> buf;
         fillMsg(buf, QUERY, nullptr, 0);
-        WriteFully(gFd, buf.data(), buf.size());
+        qemu_pipe_write_fully(gFd, buf.data(), buf.size());
         ALOGI("multidisplay pipe connected!!!");
     }
     return gFd;
@@ -121,9 +120,9 @@ static jint nativeOpen(JNIEnv* env, jobject obj) {
 static bool nativeReadPipe(JNIEnv* env, jobject obj, jintArray arr) {
     int* arrp = env->GetIntArrayElements(arr, 0);
     uint32_t length;
-    ReadFully(gFd, &length, sizeof(length));
+    qemu_pipe_read_fully(gFd, &length, sizeof(length));
     std::vector<uint8_t> args(length, 0);
-    ReadFully(gFd, args.data(), (size_t)length);
+    qemu_pipe_read_fully(gFd, args.data(), (size_t)length);
     switch(args[0]) {
         case ADD: {
             ALOGV("received add event");
