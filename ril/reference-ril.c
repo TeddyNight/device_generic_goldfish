@@ -15,6 +15,8 @@
 ** limitations under the License.
 */
 
+#define LOG_TAG "RIL"
+
 #include <telephony/ril_cdma_sms.h>
 #include <telephony/librilutils.h>
 #include <stdio.h>
@@ -37,7 +39,7 @@
 #include <cutils/properties.h>
 #include <cutils/sockets.h>
 #include <termios.h>
-#include <qemu_pipe.h>
+#include <qemud.h>
 #include <sys/wait.h>
 #include <stdbool.h>
 #include <net/if.h>
@@ -48,7 +50,7 @@
 #include "ipv6_monitor.h"
 #include "ril.h"
 
-#define LOG_TAG "RIL"
+#define EMULATOR_DUMMY_SIM_CHANNEL_NAME "A00000015144414300"
 #include <utils/Log.h>
 
 #define MAX(x, y) ({\
@@ -232,6 +234,8 @@ static const struct RIL_Env *s_rilenv;
 #endif
 
 static RIL_RadioState sState = RADIO_STATE_UNAVAILABLE;
+
+static int s_sim_update_started = 0;
 
 static pthread_mutex_t s_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t s_state_cond = PTHREAD_COND_INITIALIZER;
@@ -1626,6 +1630,11 @@ static void requestRegistrationState(int request, void *data __unused,
     int type, startfrom;
 
     RLOGD("requestRegistrationState");
+    if(s_sim_update_started == 0) {
+        RLOGD("too early, sim card is not done yet");
+        goto error;
+    }
+
     if (request == RIL_REQUEST_VOICE_REGISTRATION_STATE) {
         cmd = "AT+CREG?";
         prefix = "+CREG:";
@@ -1949,39 +1958,44 @@ error2:
 static void requestSimOpenChannel(void *data, size_t datalen, RIL_Token t)
 {
     ATResponse *p_response = NULL;
-    int32_t session_id;
+    int32_t session_id[3];
     int err;
     char cmd[32];
     char dummy;
     char *line;
 
+    const char *pdata = data ? data : EMULATOR_DUMMY_SIM_CHANNEL_NAME;
+
     // Max length is 16 bytes according to 3GPP spec 27.007 section 8.45
-    if (data == NULL || datalen == 0 || datalen > 16) {
-        ALOGE("Invalid data passed to requestSimOpenChannel");
+    if (pdata == NULL || datalen == 0 || datalen > 16) {
+        RLOGE("Invalid data passed to requestSimOpenChannel");
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         return;
     }
 
-    snprintf(cmd, sizeof(cmd), "AT+CCHO=%s", data);
+    snprintf(cmd, sizeof(cmd), "AT+CCHO=%s", pdata);
 
     err = at_send_command_numeric(cmd, &p_response);
     if (err < 0 || p_response == NULL || p_response->success == 0) {
-        ALOGE("Error %d opening logical channel: %d",
+        RLOGE("Error %d opening logical channel: %d",
               err, p_response ? p_response->success : 0);
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         at_response_free(p_response);
         return;
     }
 
+    memset(session_id, 0, sizeof(session_id));
+
     // Ensure integer only by scanning for an extra char but expect one result
     line = p_response->p_intermediates->line;
-    if (sscanf(line, "%" SCNd32 "%c", &session_id, &dummy) != 1) {
-        ALOGE("Invalid AT response, expected integer, was '%s'", line);
+    if (sscanf(line, "%" SCNd32 "%c", session_id, &dummy) != 1) {
+        RLOGE("Invalid AT response, expected integer, was '%s'", line);
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         return;
     }
 
-    RIL_onRequestComplete(t, RIL_E_SUCCESS, &session_id, sizeof(session_id));
+    session_id[1] = 0x90;
+    RIL_onRequestComplete(t, RIL_E_SUCCESS, session_id, sizeof(session_id));
     at_response_free(p_response);
 }
 
@@ -2029,9 +2043,11 @@ static void requestSimTransmitApduChannel(void *data,
     char *line;
     size_t cmd_size;
     RIL_SIM_IO_Response sim_response;
+    memset(&sim_response, 0, sizeof(sim_response));
     RIL_SIM_APDU *apdu = (RIL_SIM_APDU *)data;
 
     if (apdu == NULL || datalen != sizeof(RIL_SIM_APDU)) {
+        RLOGE("Error input invalid %p %d %d", apdu, (int)datalen, (int)(sizeof(RIL_SIM_APDU)));
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         return;
     }
@@ -2044,7 +2060,7 @@ static void requestSimTransmitApduChannel(void *data,
     err = at_send_command_singleline(cmd, "+CGLA", &p_response);
     free(cmd);
     if (err < 0 || p_response == NULL || p_response->success == 0) {
-        ALOGE("Error %d transmitting APDU: %d",
+        RLOGE("Error %d transmitting APDU: %d",
               err, p_response ? p_response->success : 0);
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         at_response_free(p_response);
@@ -2058,7 +2074,7 @@ static void requestSimTransmitApduChannel(void *data,
         RIL_onRequestComplete(t, RIL_E_SUCCESS,
                               &sim_response, sizeof(sim_response));
     } else {
-        ALOGE("Error %d parsing SIM response line: %s", err, line);
+        RLOGE("Error %d parsing SIM response line: %s", err, line);
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
     }
     at_response_free(p_response);
@@ -2252,6 +2268,10 @@ static void  requestSIM_IO(void *data, size_t datalen __unused, RIL_Token t)
                     p_args->p1, p_args->p2, p_args->p3, p_args->data);
     }
 
+    if (p_args->command == 0xdc) {
+        s_sim_update_started = 1;
+    }
+
     err = at_send_command_singleline(cmd, "+CRSM:", &p_response);
 
     if (err < 0 || p_response->success == 0) {
@@ -2405,6 +2425,7 @@ static void requestGetHardwareConfig(void *data, size_t datalen, RIL_Token t)
    // TODO - hook this up with real query/info from radio.
 
    RIL_HardwareConfig hwCfg;
+   memset(&hwCfg, 0, sizeof(hwCfg));
 
    RIL_UNUSED_PARM(data);
    RIL_UNUSED_PARM(datalen);
@@ -2752,6 +2773,9 @@ onRequest (int request, void *data, size_t datalen, RIL_Token t)
             requestSimCloseChannel(data, datalen, t);
             break;
         case RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL:
+            requestSimTransmitApduChannel(data, datalen, t);
+            break;
+        case RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC:
             requestSimTransmitApduChannel(data, datalen, t);
             break;
         case RIL_REQUEST_SETUP_DATA_CALL:
@@ -4075,7 +4099,7 @@ mainLoop(void *param __unused)
         fd = -1;
         while  (fd < 0) {
             if (isInEmulator()) {
-                fd = qemu_pipe_open("pipe:qemud:gsm");
+                fd = qemud_channel_open("gsm");
             } else if (s_port > 0) {
                 fd = socket_network_client("localhost", s_port, SOCK_STREAM);
             } else if (s_device_socket) {

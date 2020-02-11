@@ -28,6 +28,7 @@
 
 #include "fake-pipeline2/Base.h"
 #include "QemuClient.h"
+#include "cbmanager.h"
 
 #include <utils/Mutex.h>
 #include <utils/Thread.h>
@@ -46,7 +47,8 @@ class QemuSensor: private Thread, public virtual RefBase {
     *     width: Width of pixel array.
     *     height: Height of pixel array.
     */
-    QemuSensor(const char *deviceName, uint32_t width, uint32_t height);
+    QemuSensor(const char *deviceName, uint32_t width, uint32_t height,
+               CbManager* cbManager);
     ~QemuSensor();
 
     /*
@@ -123,6 +125,8 @@ class QemuSensor: private Thread, public virtual RefBase {
     static const int32_t kSensitivityRange[2];
     static const uint32_t kDefaultSensitivity;
 
+    static const char kHostCameraVerString[];
+
   private:
     int32_t mLastRequestWidth, mLastRequestHeight;
 
@@ -144,6 +148,7 @@ class QemuSensor: private Thread, public virtual RefBase {
 
     CameraQemuClient mCameraQemuClient;
     const char *mDeviceName;
+    CbManager* mCbManager;
 
     // Always lock before accessing control parameters.
     Mutex mControlMutex;
@@ -169,6 +174,7 @@ class QemuSensor: private Thread, public virtual RefBase {
 
     // Time of sensor startup (used for simulation zero-time point).
     nsecs_t mStartupTime;
+    int32_t mHostCameraVer;
 
   private:
     /*
@@ -186,12 +192,16 @@ class QemuSensor: private Thread, public virtual RefBase {
     nsecs_t mNextCaptureTime;
     Buffers *mNextCapturedBuffers;
 
+    void captureRGBA(uint32_t width, uint32_t height, uint32_t stride,
+                     int64_t *timestamp, buffer_handle_t* handle);
+    void captureYU12(uint32_t width, uint32_t height, uint32_t stride,
+                     int64_t *timestamp, buffer_handle_t* handle);
     void captureRGBA(uint8_t *img, uint32_t width, uint32_t height,
-            uint32_t stride, int64_t *timestamp);
-    void captureRGB(uint8_t *img, uint32_t width, uint32_t height,
-            uint32_t stride, int64_t *timestamp);
+                     uint32_t stride, int64_t *timestamp);
     void captureYU12(uint8_t *img, uint32_t width, uint32_t height,
-            uint32_t stride, int64_t *timestamp);
+                     uint32_t stride, int64_t *timestamp);
+    void captureRGB(uint8_t *img, uint32_t width, uint32_t height,
+                    uint32_t stride, int64_t *timestamp);
 };
 
 }; // end of namespace android
