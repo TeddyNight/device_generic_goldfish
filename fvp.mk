@@ -14,8 +14,10 @@
 # limitations under the License.
 #
 
+PRODUCT_SHIPPING_API_LEVEL := 29
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
 PRODUCT_FULL_TREBLE_OVERRIDE := true
+PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
 
 #
 # All components inherited here go to system image
@@ -43,6 +45,8 @@ PRODUCT_PACKAGES += \
     android.hardware.audio@2.0-service \
     android.hardware.audio@4.0-impl:32 \
     android.hardware.audio.effect@4.0-impl:32 \
+    audio.primary.default \
+    audio.r_submix.default \
     android.hardware.drm@1.0-service \
     android.hardware.drm@1.0-impl \
     android.hardware.drm@1.2-service.clearkey \
