@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ifneq ($(filter generic_x86 generic_x86_64 generic generic_arm64 generic_x86_arm, $(TARGET_DEVICE)),)
+ifneq ($(filter generic_x86 generic_x86_64 generic generic_arm64 generic_x86_64_arm64 generic_x86_arm, $(TARGET_DEVICE)),)
 
 LOCAL_PATH := $(call my-dir)
 
@@ -37,7 +37,8 @@ emulator_camera_shared_libraries := \
     libdl \
     libjpeg \
     libcamera_metadata \
-    libhardware
+    libcbmanager \
+    android.hardware.graphics.mapper@2.0 \
 
 emulator_camera_static_libraries := \
 	android.hardware.camera.common@1.0-helper \
@@ -48,6 +49,7 @@ emulator_camera_c_includes := external/libjpeg-turbo \
 	external/libyuv/files/include \
 	frameworks/native/include/media/hardware \
 	$(LOCAL_PATH)/../include \
+	$(LOCAL_PATH)/../../goldfish-opengl/system/include \
 	$(LOCAL_PATH)/../../goldfish-opengl/system/OpenglSystemCommon \
 	$(LOCAL_PATH)/../../goldfish-opengl/shared/OpenglCodecCommon \
 	$(call include-path-for, camera)
@@ -123,13 +125,13 @@ LOCAL_SRC_FILES := ${emulator_camera_src}
 LOCAL_MODULE := camera.ranchu
 
 # Symlink media profile configurations from /vendor/etc to /data/vendor/etc/
-LOCAL_POST_INSTALL_CMD := ln -sf /data/vendor/etc/media_codecs_google_video.xml $(PRODUCT_OUT)/vendor/etc/media_codecs_google_video.xml
 include $(BUILD_SHARED_LIBRARY)
 
 # Emulator camera - test binary################################################
 
 include ${CLEAR_VARS}
 
+LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_RELATIVE_PATH := ${emulator_camera_module_relative_path}
 LOCAL_CFLAGS := ${emulator_camera_cflags}
 LOCAL_CLANG_CFLAGS += ${emulator_camera_clang_flags}

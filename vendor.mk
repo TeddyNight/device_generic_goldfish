@@ -16,6 +16,7 @@
 #
 # This file is to configure vendor/data partitions of emulator-related products
 #
+$(call inherit-product-if-exists, frameworks/native/build/phone-xhdpi-2048-dalvik-heap.mk)
 
 ifeq ($(QEMU_DISABLE_AVB),true)
   ifeq ($(QEMU_USE_SYSTEM_EXT_PARTITIONS),true)
@@ -31,6 +32,7 @@ ifeq ($(QEMU_DISABLE_AVB),true)
   endif
 endif
 
+PRODUCT_SYSTEM_EXT_PROPERTIES += ro.lockscreen.disable.default=1
 ifeq ($(QEMU_USE_SYSTEM_EXT_PARTITIONS),true)
 PRODUCT_COPY_FILES += \
     device/generic/goldfish/fstab.ranchu.initrd.ex:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
@@ -45,9 +47,6 @@ DEVICE_MANIFEST_FILE := device/generic/goldfish/manifest.xml
 # Device modules
 PRODUCT_PACKAGES += \
     vulkan.ranchu \
-    gralloc.goldfish \
-    gralloc.goldfish.default \
-    gralloc.ranchu \
     libandroidemu \
     libOpenglCodecCommon \
     libOpenglSystemCommon \
@@ -61,15 +60,12 @@ PRODUCT_PACKAGES += \
     fingerprint.goldfish \
     audio.primary.goldfish \
     audio.primary.goldfish_legacy \
-    power.goldfish \
-    power.ranchu \
+    stagefright \
     fingerprint.ranchu \
-    android.hardware.graphics.composer@2.3-impl \
-    android.hardware.graphics.composer@2.3-service \
-    android.hardware.graphics.allocator@2.0-service \
-    android.hardware.graphics.allocator@2.0-impl \
-    android.hardware.graphics.mapper@2.0-impl \
-    hwcomposer.goldfish \
+    android.hardware.graphics.composer@2.1-impl \
+    android.hardware.graphics.composer@2.1-service \
+    android.hardware.graphics.allocator@3.0-service \
+    android.hardware.graphics.mapper@3.0-impl-ranchu \
     hwcomposer.ranchu \
     toybox_vendor \
     android.hardware.audio@2.0-service \
@@ -100,12 +96,10 @@ endif
 PRODUCT_PACKAGES += \
     android.hardware.audio@5.0-impl:32 \
     android.hardware.audio.effect@5.0-impl:32 \
-    android.hardware.broadcastradio@1.1-service \
-    android.hardware.broadcastradio@1.0-impl \
     android.hardware.soundtrigger@2.0-impl
 
 PRODUCT_PACKAGES += \
-    android.hardware.health@2.0-service.goldfish
+    android.hardware.health@2.0-service
 
 PRODUCT_PACKAGES += \
     android.hardware.keymaster@4.0-impl \
@@ -136,12 +130,16 @@ PRODUCT_PACKAGES += \
     android.hardware.drm@1.2-service.widevine
 
 PRODUCT_PACKAGES += \
-    android.hardware.power@1.1-service.ranchu \
+    android.hardware.power@1.3-service.ranchu \
 
 PRODUCT_PROPERTY_OVERRIDES += ro.control_privapp_permissions=enforce
 PRODUCT_PROPERTY_OVERRIDES += ro.hardware.power=ranchu
+PRODUCT_PROPERTY_OVERRIDES += ro.crypto.volume.filenames_mode=aes-256-cts
 
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.zram_enabled=1 \
+
+# Prevent logcat from getting canceled early on in boot
+PRODUCT_PROPERTY_OVERRIDES += ro.logd.size=1M \
 
 ifneq ($(EMULATOR_VENDOR_NO_CAMERA),true)
 PRODUCT_PACKAGES += \
@@ -160,6 +158,7 @@ PRODUCT_PACKAGES += \
 
 # WiFi: vendor side
 PRODUCT_PACKAGES += \
+	mac80211_create_radios \
 	createns \
 	dhcpclient \
 	execns \
@@ -231,8 +230,7 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/camera/media_profiles.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_profiles_V1_0.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_audio.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_telephony.xml \
-    device/generic/goldfish/camera/media_codecs_google_video_default.xml:data/vendor/etc/media_codecs_google_video_default.xml \
-    device/generic/goldfish/camera/media_codecs_google_video_v2.xml:data/vendor/etc/media_codecs_google_video_v2.xml \
+    device/generic/goldfish/camera/media_codecs_google_video_default.xml:${TARGET_COPY_OUT_VENDOR}/etc/media_codecs_google_video.xml \
     device/generic/goldfish/camera/media_codecs.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs.xml \
     device/generic/goldfish/camera/media_codecs_performance.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_performance.xml \
     frameworks/native/data/etc/android.hardware.touchscreen.multitouch.jazzhand.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml \
@@ -243,6 +241,7 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.vulkan.level-1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.level.xml \
     frameworks/native/data/etc/android.hardware.vulkan.compute-0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.compute.xml \
     frameworks/native/data/etc/android.hardware.vulkan.version-1_1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.version.xml \
+    device/generic/goldfish/data/etc/android.software.vulkan.deqp.level-2019-03-01.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.vulkan.deqp.level-2019-03-01.xml \
     frameworks/native/data/etc/android.software.autofill.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.autofill.xml \
     frameworks/native/data/etc/android.software.verified_boot.xml:${TARGET_COPY_OUT_PRODUCT}/etc/permissions/android.software.verified_boot.xml \
     frameworks/av/media/libeffects/data/audio_effects.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_effects.xml \

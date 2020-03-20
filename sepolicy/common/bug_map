@@ -1,3 +1,4 @@
+gsid gsid capability b/146356992
 hal_wifi_default default_prop file b/131598173
 hal_wifi_default vendor_default_prop property_service b/131598173
 init unlabeled dir b/131596633
@@ -15,3 +16,4 @@ ueventd metadata_file dir b/131594529
 vendor_init exported2_default_prop property_service b/131601458
 init serial_device chr_file b/134145307
 gsid device file b/133324244
+gmscore_app varrun_file dir b/131598844
