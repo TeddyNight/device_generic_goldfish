@@ -24,6 +24,7 @@
 
 #include "EmulatedCameraHotplugThread.h"
 #include "EmulatedCameraFactory.h"
+#include "qemu_pipe.h"
 
 #define FAKE_HOTPLUG_FILE "/data/misc/media/emulator.camera.hotplug"
 
@@ -134,7 +135,7 @@ bool EmulatedCameraHotplugThread::threadLoop() {
     // If requestExit was already called, mRunning will be false
     while (mRunning) {
         char buffer[EVENT_BUF_LEN];
-        int length = TEMP_FAILURE_RETRY(
+        int length = QEMU_PIPE_RETRY(
                         read(mInotifyFd, buffer, EVENT_BUF_LEN));
 
         if (length < 0) {
@@ -209,30 +210,6 @@ bool EmulatedCameraHotplugThread::threadLoop() {
 
 String8 EmulatedCameraHotplugThread::getFilePath(int cameraId) const {
     return String8::format(FAKE_HOTPLUG_FILE ".%d", cameraId);
-}
-
-bool EmulatedCameraHotplugThread::createFileIfNotExists(int cameraId) const
-{
-    String8 filePath = getFilePath(cameraId);
-    // make sure this file exists and we have access to it
-    int fd = TEMP_FAILURE_RETRY(
-                open(filePath.string(), O_WRONLY | O_CREAT | O_TRUNC,
-                     /* mode = ug+rwx */ S_IRWXU | S_IRWXG ));
-    if (fd == -1) {
-        ALOGE("%s: Could not create file '%s', error: '%s' (%d)",
-             __FUNCTION__, filePath.string(), strerror(errno), errno);
-        return false;
-    }
-
-    // File has '1' by default since we are plugged in by default
-    if (TEMP_FAILURE_RETRY(write(fd, "1\n", /*count*/2)) == -1) {
-        ALOGE("%s: Could not write '1' to file '%s', error: '%s' (%d)",
-             __FUNCTION__, filePath.string(), strerror(errno), errno);
-        return false;
-    }
-
-    close(fd);
-    return true;
 }
 
 int EmulatedCameraHotplugThread::getCameraId(const String8& filePath) const {
@@ -322,7 +299,7 @@ bool EmulatedCameraHotplugThread::removeWatch(int cameraId) {
 
 int EmulatedCameraHotplugThread::readFile(const String8& filePath) const {
 
-    int fd = TEMP_FAILURE_RETRY(
+    int fd = QEMU_PIPE_RETRY(
                 open(filePath.string(), O_RDONLY, /*mode*/0));
     if (fd == -1) {
         ALOGE("%s: Could not open file '%s', error: '%s' (%d)",
@@ -333,7 +310,7 @@ int EmulatedCameraHotplugThread::readFile(const String8& filePath) const {
     char buffer[1];
     int length;
 
-    length = TEMP_FAILURE_RETRY(
+    length = QEMU_PIPE_RETRY(
                     read(fd, buffer, sizeof(buffer)));
 
     int retval;
