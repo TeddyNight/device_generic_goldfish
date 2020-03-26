@@ -138,6 +138,9 @@ PRODUCT_PROPERTY_OVERRIDES += ro.crypto.volume.filenames_mode=aes-256-cts
 
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.zram_enabled=1 \
 
+PRODUCT_PACKAGES += \
+    android.hardware.dumpstate@1.1-service.example \
+
 # Prevent logcat from getting canceled early on in boot
 PRODUCT_PROPERTY_OVERRIDES += ro.logd.size=1M \
 
@@ -209,6 +212,10 @@ PRODUCT_PACKAGES += \
 # -qemu -append qemu.media.ccodec=<value> can override it; default 0
 #PRODUCT_PROPERTY_OVERRIDES += \
 #    debug.stagefright.ccodec=0
+
+# Enable Incremental on the device via kernel driver
+PRODUCT_PRODUCT_PROPERTIES += ro.incremental.enable=yes
+
 
 PRODUCT_COPY_FILES += \
     device/generic/goldfish/fstab.ranchu.initrd:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
