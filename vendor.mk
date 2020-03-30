@@ -18,27 +18,7 @@
 #
 $(call inherit-product-if-exists, frameworks/native/build/phone-xhdpi-2048-dalvik-heap.mk)
 
-ifeq ($(QEMU_DISABLE_AVB),true)
-  ifeq ($(QEMU_USE_SYSTEM_EXT_PARTITIONS),true)
-    PRODUCT_COPY_FILES += \
-      device/generic/goldfish/data/etc/dummy.vbmeta.img:$(PRODUCT_OUT)/vbmeta.img \
-      device/generic/goldfish/fstab.ranchu.initrd.noavb.ex:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
-      device/generic/goldfish/fstab.ranchu.noavb.ex:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu
-  else
-    PRODUCT_COPY_FILES += \
-      device/generic/goldfish/data/etc/dummy.vbmeta.img:$(PRODUCT_OUT)/vbmeta.img \
-      device/generic/goldfish/fstab.ranchu.initrd.noavb:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
-      device/generic/goldfish/fstab.ranchu.noavb:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu
-  endif
-endif
-
 PRODUCT_SYSTEM_EXT_PROPERTIES += ro.lockscreen.disable.default=1
-ifeq ($(QEMU_USE_SYSTEM_EXT_PARTITIONS),true)
-PRODUCT_COPY_FILES += \
-    device/generic/goldfish/fstab.ranchu.initrd.ex:$(TARGET_COPY_OUT_RAMDISK)/fstab.ranchu \
-    device/generic/goldfish/fstab.ranchu.ex:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu
-endif
-
 
 DISABLE_RILD_OEM_HOOK := true
 
@@ -50,9 +30,6 @@ PRODUCT_PACKAGES += \
     libandroidemu \
     libOpenglCodecCommon \
     libOpenglSystemCommon \
-    libEGL_swiftshader \
-    libGLESv1_CM_swiftshader \
-    libGLESv2_swiftshader \
     libgoldfish-ril \
     qemu-props \
     gps.goldfish \
@@ -60,9 +37,7 @@ PRODUCT_PACKAGES += \
     fingerprint.goldfish \
     audio.primary.goldfish \
     audio.primary.goldfish_legacy \
-    power.goldfish \
     stagefright \
-    power.ranchu \
     fingerprint.ranchu \
     android.hardware.graphics.composer@2.1-impl \
     android.hardware.graphics.composer@2.1-service \
@@ -98,16 +73,15 @@ endif
 PRODUCT_PACKAGES += \
     android.hardware.audio@5.0-impl:32 \
     android.hardware.audio.effect@5.0-impl:32 \
-    android.hardware.broadcastradio@1.1-service \
-    android.hardware.broadcastradio@1.0-impl \
     android.hardware.soundtrigger@2.0-impl
 
 PRODUCT_PACKAGES += \
-    android.hardware.health@2.0-service
+    android.hardware.health@2.1-service \
+    android.hardware.health@2.1-impl \
+    android.hardware.health.storage@1.0-service \
 
 PRODUCT_PACKAGES += \
-    android.hardware.keymaster@4.0-impl \
-    android.hardware.keymaster@4.0-service
+    android.hardware.keymaster@4.1-service
 
 PRODUCT_PACKAGES += \
     DisplayCutoutEmulationEmu01Overlay
@@ -134,13 +108,19 @@ PRODUCT_PACKAGES += \
     android.hardware.drm@1.2-service.widevine
 
 PRODUCT_PACKAGES += \
-    android.hardware.power@1.1-service.ranchu \
+    android.hardware.power-service.example \
 
 PRODUCT_PROPERTY_OVERRIDES += ro.control_privapp_permissions=enforce
 PRODUCT_PROPERTY_OVERRIDES += ro.hardware.power=ranchu
 PRODUCT_PROPERTY_OVERRIDES += ro.crypto.volume.filenames_mode=aes-256-cts
 
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.zram_enabled=1 \
+
+PRODUCT_PACKAGES += \
+    android.hardware.dumpstate@1.1-service.example \
+
+# Prevent logcat from getting canceled early on in boot
+PRODUCT_PROPERTY_OVERRIDES += ro.logd.size=1M \
 
 ifneq ($(EMULATOR_VENDOR_NO_CAMERA),true)
 PRODUCT_PACKAGES += \
@@ -185,9 +165,17 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.authsecret@1.0-service
 
+# Identity
+PRODUCT_PACKAGES += \
+    android.hardware.identity-service.example
+
 # Input Classifier HAL
 PRODUCT_PACKAGES += \
     android.hardware.input.classifier@1.0-service.default
+
+# lights
+PRODUCT_PACKAGES += \
+    android.hardware.lights-service.example
 
 # power stats
 PRODUCT_PACKAGES += \
