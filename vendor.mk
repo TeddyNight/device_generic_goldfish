@@ -50,9 +50,6 @@ PRODUCT_PACKAGES += \
     libandroidemu \
     libOpenglCodecCommon \
     libOpenglSystemCommon \
-    libEGL_swiftshader \
-    libGLESv1_CM_swiftshader \
-    libGLESv2_swiftshader \
     libgoldfish-ril \
     qemu-props \
     gps.goldfish \
@@ -99,11 +96,12 @@ PRODUCT_PACKAGES += \
     android.hardware.soundtrigger@2.0-impl
 
 PRODUCT_PACKAGES += \
-    android.hardware.health@2.0-service
+    android.hardware.health@2.1-service \
+    android.hardware.health@2.1-impl \
+    android.hardware.health.storage@1.0-service \
 
 PRODUCT_PACKAGES += \
-    android.hardware.keymaster@4.0-impl \
-    android.hardware.keymaster@4.0-service
+    android.hardware.keymaster@4.1-service
 
 PRODUCT_PACKAGES += \
     DisplayCutoutEmulationEmu01Overlay
@@ -130,13 +128,16 @@ PRODUCT_PACKAGES += \
     android.hardware.drm@1.2-service.widevine
 
 PRODUCT_PACKAGES += \
-    android.hardware.power@1.3-service.ranchu \
+    android.hardware.power-service.example \
 
 PRODUCT_PROPERTY_OVERRIDES += ro.control_privapp_permissions=enforce
 PRODUCT_PROPERTY_OVERRIDES += ro.hardware.power=ranchu
 PRODUCT_PROPERTY_OVERRIDES += ro.crypto.volume.filenames_mode=aes-256-cts
 
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.zram_enabled=1 \
+
+PRODUCT_PACKAGES += \
+    android.hardware.dumpstate@1.1-service.example \
 
 # Prevent logcat from getting canceled early on in boot
 PRODUCT_PROPERTY_OVERRIDES += ro.logd.size=1M \
@@ -184,9 +185,17 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.authsecret@1.0-service
 
+# Identity
+PRODUCT_PACKAGES += \
+    android.hardware.identity-service.example
+
 # Input Classifier HAL
 PRODUCT_PACKAGES += \
     android.hardware.input.classifier@1.0-service.default
+
+# lights
+PRODUCT_PACKAGES += \
+    android.hardware.lights-service.example
 
 # power stats
 PRODUCT_PACKAGES += \
