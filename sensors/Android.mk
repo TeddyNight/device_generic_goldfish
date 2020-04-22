@@ -1,4 +1,4 @@
-# Copyright (C) 2008 The Android Open Source Project
+# Copyright (C) 2009 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,25 +16,17 @@
 LOCAL_PATH := $(call my-dir)
 
 # HAL module implemenation stored in
-# hw/<OVERLAY_HARDWARE_MODULE_ID>.<ro.product.board>.so
+# hw/<SENSORS_HARDWARE_MODULE_ID>.<ro.hardware>.so
+
 include $(CLEAR_VARS)
-
+LOCAL_VENDOR_MODULE := true
 LOCAL_MODULE_RELATIVE_PATH := hw
-LOCAL_PROPRIETARY_MODULE := true
 LOCAL_SHARED_LIBRARIES := liblog libcutils
-
-LOCAL_SRC_FILES := 	\
-	gralloc.cpp 	\
-	framebuffer.cpp \
-	mapper.cpp
-
 LOCAL_HEADER_LIBRARIES := libhardware_headers
-
-LOCAL_MODULE := gralloc.goldfish.default
-LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\" -Wno-missing-field-initializers
-LOCAL_CFLAGS:= -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
-ifeq ($(TARGET_USE_PAN_DISPLAY),true)
-LOCAL_CFLAGS += -DUSE_PAN_DISPLAY=1
-endif
+LOCAL_C_INCLUDES += \
+	$(LOCAL_PATH)/../include \
+	$(LOCAL_PATH)/../../goldfish-opengl/shared/OpenglCodecCommon
+LOCAL_SRC_FILES := sensors_qemu.c
+LOCAL_MODULE := sensors.ranchu
 
 include $(BUILD_SHARED_LIBRARY)
