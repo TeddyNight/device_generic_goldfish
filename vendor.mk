@@ -18,8 +18,6 @@
 #
 $(call inherit-product-if-exists, frameworks/native/build/phone-xhdpi-2048-dalvik-heap.mk)
 
-PRODUCT_SOONG_NAMESPACES += device/generic/goldfish
-
 PRODUCT_SYSTEM_EXT_PROPERTIES += ro.lockscreen.disable.default=1
 
 DISABLE_RILD_OEM_HOOK := true
@@ -107,8 +105,10 @@ endif
 
 ifneq ($(EMULATOR_VENDOR_NO_SENSORS),true)
 PRODUCT_PACKAGES += \
-    android.hardware.sensors@2.0-service.multihal \
-    android.hardware.sensors@2.0-impl.ranchu
+    android.hardware.sensors@1.0-impl \
+    android.hardware.sensors@1.0-service \
+    sensors.ranchu
+DEVICE_MANIFEST_FILE += device/generic/goldfish/manifest.sensors.xml
 endif
 
 PRODUCT_PACKAGES += \
