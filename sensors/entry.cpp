@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,14 @@
  * limitations under the License.
  */
 
-#pragma once
+#include <log/log.h>
+#include "multihal_sensors.h"
 
-#include <functional>
-#include <vector>
-#include <hardware_legacy/wifi_hal.h>
-#include "interface.h"
-#include "netlink.h"
+namespace {
+goldfish::MultihalSensors impl;
+}
 
-class Info {
-public:
-    using StopHandler = std::function<void ()>;
-    Info();
-
-    bool init();
-    void eventLoop();
-    void stop(StopHandler stopHandler);
-    wifi_error getInterfaces(int* num, wifi_interface_handle** interfaces);
-
-private:
-    Netlink mNetlink;
-    std::vector<wifi_interface_handle> mInterfaceHandles;
-    std::vector<Interface> mInterfaces;
-};
-
+extern "C" ISensorsSubHal* sensorsHalGetSubHal(uint32_t* version) {
+    *version = SUB_HAL_2_0_VERSION;
+    return &impl;
+}

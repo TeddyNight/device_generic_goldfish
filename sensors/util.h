@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,14 @@
 
 #pragma once
 
-#include <functional>
-#include <vector>
-#include <hardware_legacy/wifi_hal.h>
-#include "interface.h"
-#include "netlink.h"
+namespace goldfish {
 
-class Info {
-public:
-    using StopHandler = std::function<void ()>;
-    Info();
+int qemu_pipe_open_ns(const char* ns, const char* pipeName, int flags);
+int qemu_pipe_read_fully(int pipe, void* buffer, int len);
+int qemu_pipe_write_fully(int pipe, const void* buffer, int len);
 
-    bool init();
-    void eventLoop();
-    void stop(StopHandler stopHandler);
-    wifi_error getInterfaces(int* num, wifi_interface_handle** interfaces);
+int qemud_channel_open(const char* name);
+int qemud_channel_send(int pipe, const void* msg, int msglen);
+int qemud_channel_recv(int pipe, void*  msg, int msgsize);
 
-private:
-    Netlink mNetlink;
-    std::vector<wifi_interface_handle> mInterfaceHandles;
-    std::vector<Interface> mInterfaces;
-};
-
+}  // namespace goldfish
