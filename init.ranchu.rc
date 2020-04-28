@@ -20,12 +20,6 @@ on post-fs-data
     mkdir /data/vendor/var 0755 root root
     mkdir /data/vendor/var/run 0755 root root
     mkdir /data/vendor/var/run/netns 0755 root root
-    start ranchu-net
-
-    chown root root /data/vendor/etc
-    rm /data/vendor/etc/media_codecs_google_video.xml
-    symlink /data/vendor/etc/media_codecs_google_video_default.xml /data/vendor/etc/media_codecs_google_video.xml
-    setprop qemu.mediaprofile.video ${ro.kernel.qemu.mediaprofile.video}
 
 on zygote-start
     # Create the directories used by the Wireless subsystem
@@ -39,7 +33,6 @@ on boot
     setprop debug.hwui.renderer ${ro.kernel.qemu.uirenderer}
     setprop ro.opengles.version ${ro.kernel.qemu.opengles.version}
     setprop ro.zygote.disable_gl_preload 1
-
     setprop dalvik.vm.heapsize 192m
     setprop dalvik.vm.heapsize ${ro.kernel.qemu.dalvik.vm.heapsize}
     chown root system /sys/power/wake_lock
@@ -60,10 +53,6 @@ service ranchu-setup /vendor/bin/init.ranchu-core.sh
     group root
     oneshot
 
-on property:qemu.mediaprofile.video=*
-    rm /data/vendor/etc/media_codecs_google_video.xml
-    symlink ${qemu.mediaprofile.video} /data/vendor/etc/media_codecs_google_video.xml
-
 on property:vendor.qemu.timezone=*
     setprop persist.sys.timezone ${vendor.qemu.timezone}
 
@@ -78,32 +67,33 @@ service ranchu-net /vendor/bin/init.ranchu-net.sh
     user root
     group root wakelock wifi
     oneshot
-    disabled    # Started on post-fs-data
+
+service ipv6proxy /vendor/bin/execns router /vendor/bin/ipv6proxy -o eth0 -i wlan1,radio0-peer
+    user root
+    group root
+    disabled
 
 service emu_hostapd /vendor/bin/execns router /vendor/bin/hostapd_nohidl /data/vendor/wifi/hostapd/hostapd.conf
     user root
     group root wifi net_raw net_admin
     disabled
 
-service netmgr /vendor/bin/execns router /vendor/bin/netmgr --if-prefix wlan1 --bridge eth0,radio0-peer
-    user root
-    group root wifi
-    disabled
-
-service wifi_forwarder /vendor/bin/wifi_forwarder
-    user root
-    group root wifi
-    disabled
-
-service dhcpclient_rtr /vendor/bin/dhcpclient -i radio0 --no-gateway
+service dhcpserver /vendor/bin/execns router /vendor/bin/dhcpserver --exclude-interface eth0
     user root
     group root
     disabled
 
-on property:vendor.network.bridged=1
-    start dhcpclient_rtr
+service netmgr /vendor/bin/execns router /vendor/bin/netmgr --if-prefix wlan1_ --network 192.168.232.9/29
+    user root
+    group root wifi
+    disabled
 
-service dhcpclient_def /vendor/bin/dhcpclient -i eth0 --no-gateway
+service dhcpclient_rtr /vendor/bin/execns router /vendor/bin/dhcpclient -i eth0
+    user root
+    group root
+    disabled
+
+service dhcpclient_def /vendor/bin/dhcpclient -i eth0
     user root
     group root
     disabled
@@ -140,9 +130,6 @@ service bugreport /system/bin/dumpstate -d -p -B -z \
     keycodes 114 115 116
 
 service wpa_supplicant /vendor/bin/hw/wpa_supplicant -Dnl80211 -iwlan0 -c/vendor/etc/wifi/wpa_supplicant.conf -g@android:wpa_wlan0
-    interface android.hardware.wifi.supplicant@1.0::ISupplicant default
-    interface android.hardware.wifi.supplicant@1.1::ISupplicant default
-    interface android.hardware.wifi.supplicant@1.2::ISupplicant default
     socket wpa_wlan0 dgram 660 wifi wifi
     group system wifi inet
     oneshot

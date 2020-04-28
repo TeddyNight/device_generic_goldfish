@@ -21,7 +21,6 @@
 //#define LOG_NNDEBUG 0
 
 #define LOG_TAG "EmulatedCamera3_QemuSensor"
-#define ATRACE_TAG ATRACE_TAG_CAMERA
 
 #ifdef LOG_NNDEBUG
 #define ALOGVV(...) ALOGV(__VA_ARGS__)
@@ -36,7 +35,6 @@
 #include <cstdlib>
 #include <linux/videodev2.h>
 #include <log/log.h>
-#include <utils/Trace.h>
 
 namespace android {
 
@@ -189,7 +187,6 @@ status_t QemuSensor::readyToRun() {
 }
 
 bool QemuSensor::threadLoop() {
-    ATRACE_CALL();
     /*
      * Stages are out-of-order relative to a single frame's processing, but
      * in-order in time.
@@ -306,7 +303,7 @@ bool QemuSensor::threadLoop() {
                     }
                     break;
                 case HAL_PIXEL_FORMAT_YCbCr_420_888:
-                    captureYU12(b.img, b.width, b.height, b.stride, &timestamp);
+                    captureNV21(b.img, b.width, b.height, b.stride, &timestamp);
                     break;
                 default:
                     ALOGE("%s: Unknown/unsupported format %x, no output",
@@ -346,7 +343,6 @@ bool QemuSensor::threadLoop() {
 
 void QemuSensor::captureRGBA(uint8_t *img, uint32_t width, uint32_t height,
         uint32_t stride, int64_t *timestamp) {
-    ATRACE_CALL();
     status_t res;
     if (width != (uint32_t)mLastRequestWidth ||
         height != (uint32_t)mLastRequestHeight) {
@@ -373,9 +369,9 @@ void QemuSensor::captureRGBA(uint8_t *img, uint32_t width, uint32_t height,
         /*
          * Host Camera always assumes V4L2_PIX_FMT_RGB32 as the preview format,
          * and asks for the video format from the pixFmt parameter, which is
-         * V4L2_PIX_FMT_YUV420 in our implementation.
+         * V4L2_PIX_FMT_NV21 in our implementation.
          */
-        uint32_t pixFmt = V4L2_PIX_FMT_YUV420;
+        uint32_t pixFmt = V4L2_PIX_FMT_NV21;
         res = mCameraQemuClient.queryStart(pixFmt, width, height);
         if (res == NO_ERROR) {
             mLastRequestWidth = width;
@@ -415,8 +411,7 @@ void QemuSensor::captureRGB(uint8_t *img, uint32_t width, uint32_t height, uint3
     ALOGE("%s: Not implemented", __FUNCTION__);
 }
 
-void QemuSensor::captureYU12(uint8_t *img, uint32_t width, uint32_t height, uint32_t stride, int64_t *timestamp) {
-    ATRACE_CALL();
+void QemuSensor::captureNV21(uint8_t *img, uint32_t width, uint32_t height, uint32_t stride, int64_t *timestamp) {
     status_t res;
     if (width != (uint32_t)mLastRequestWidth ||
         height != (uint32_t)mLastRequestHeight) {
@@ -443,9 +438,9 @@ void QemuSensor::captureYU12(uint8_t *img, uint32_t width, uint32_t height, uint
         /*
          * Host Camera always assumes V4L2_PIX_FMT_RGB32 as the preview format,
          * and asks for the video format from the pixFmt parameter, which is
-         * V4L2_PIX_FMT_YUV420 in our implementation.
+         * V4L2_PIX_FMT_NV21 in our implementation.
          */
-        uint32_t pixFmt = V4L2_PIX_FMT_YUV420;
+        uint32_t pixFmt = V4L2_PIX_FMT_NV21;
         res = mCameraQemuClient.queryStart(pixFmt, width, height);
         if (res == NO_ERROR) {
             mLastRequestWidth = width;
@@ -468,7 +463,7 @@ void QemuSensor::captureYU12(uint8_t *img, uint32_t width, uint32_t height, uint
               width, stride);
     }
 
-    // Calculate the buffer size for YUV420.
+    // Calculate the buffer size for NV21.
     size_t bufferSize = (width * height * 12) / 8;
     // Apply no white balance or exposure compensation.
     float whiteBalance[] = {1.0f, 1.0f, 1.0f};
@@ -478,7 +473,7 @@ void QemuSensor::captureYU12(uint8_t *img, uint32_t width, uint32_t height, uint
             whiteBalance[1], whiteBalance[2],
             exposureCompensation, timestamp);
 
-    ALOGVV("YUV420 sensor image captured");
+    ALOGVV("NV21 sensor image captured");
 }
 
 }; // end of namespace android

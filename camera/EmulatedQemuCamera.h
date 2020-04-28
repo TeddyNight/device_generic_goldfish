@@ -66,9 +66,6 @@ protected:
 
     /* Supported frame dimensions reported by the camera device. */
     String8                     mFrameDims;
-
-private:
-    using EmulatedCamera::Initialize;
 };
 
 }; /* namespace android */

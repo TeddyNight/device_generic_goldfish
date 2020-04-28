@@ -8,7 +8,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # build quite specifically for the emulator, and might not be
 # entirely appropriate to inherit from for on-device configurations.
 PRODUCT_COPY_FILES += \
-    device/generic/goldfish/data/etc/config.ini.nexus5:config.ini \
     device/generic/goldfish/data/etc/advancedFeatures.ini:advancedFeatures.ini \
     device/generic/goldfish/data/etc/encryptionkey.img:encryptionkey.img \
     prebuilts/qemu-kernel/x86_64/$(PRODUCT_KERNEL_VERSION)/kernel-qemu2:kernel-ranchu
@@ -16,10 +15,6 @@ PRODUCT_SDK_ADDON_COPY_FILES += \
     device/generic/goldfish/data/etc/advancedFeatures.ini:images/x86_64/advancedFeatures.ini \
     device/generic/goldfish/data/etc/encryptionkey.img:images/x86_64/encryptionkey.img \
     prebuilts/qemu-kernel/x86_64/$(PRODUCT_KERNEL_VERSION)/kernel-qemu2:images/x86_64/kernel-ranchu
-
-PRODUCT_COPY_FILES += \
-    device/generic/goldfish/data/etc/x86/emulatorip:$(TARGET_COPY_OUT_VENDOR)/bin/ip
-
 
 PRODUCT_SHIPPING_API_LEVEL := 28
 TARGET_USES_MKE2FS := true

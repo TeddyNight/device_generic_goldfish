@@ -103,8 +103,8 @@ static bool writeNamespacePid(const char* name, pid_t pid) {
     path += ".pid";
 
     Fd fd(::open(path.c_str(),
-                 O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC,
-                 S_IRUSR | S_IWUSR | S_IRGRP));
+                 O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC,
+                 S_IRUSR | S_IRGRP | S_IROTH));
     if (fd.get() == -1) {
         ALOGE("Unable to create file '%s': %s", path.c_str(), strerror(errno));
         return false;
@@ -223,7 +223,6 @@ int main(int argc, char* argv[]) {
         ALOGE("Failed to create pipe: %s", strerror(errno));
         return 1;
     }
-
     Fd readPipe(fds[0]);
     Fd writePipe(fds[1]);
 
@@ -240,8 +239,7 @@ int main(int argc, char* argv[]) {
     }
     {
         // Open and then immediately close the fd
-        Fd fd(::open(path.c_str(), O_CREAT | O_TRUNC | O_RDONLY | O_CLOEXEC,
-                     S_IRUSR | S_IWUSR | S_IRGRP));
+        Fd fd(::open(path.c_str(), O_CREAT | O_EXCL | O_RDONLY | O_CLOEXEC, 0));
         if (fd.get() == -1) {
             ALOGE("Failed to open file %s: %s", path.c_str(), strerror(errno));
             return 1;

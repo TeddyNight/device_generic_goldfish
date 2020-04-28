@@ -37,11 +37,7 @@ Monitor::~Monitor() {
 }
 
 Result Monitor::init() {
-    Result res = openSocket();
-    if (!res) {
-        return res;
-    }
-    return requestInterfaces();
+    return openSocket();
 }
 
 void Monitor::setOnInterfaceState(OnInterfaceStateCallback callback) {
@@ -88,7 +84,7 @@ bool Monitor::onReadAvailable(int /*fd*/, int* /*status*/) {
                 default:
                     break;
             }
-            hdr = NLMSG_NEXT(hdr, length);
+            NLMSG_NEXT(hdr, length);
         }
     }
 }
@@ -144,36 +140,6 @@ Result Monitor::openSocket() {
     return Result::success();
 }
 
-Result Monitor::requestInterfaces() {
-    if (mSocketFd == -1) {
-        return Result::error("Monitor not initialized yet");
-    }
-
-    struct {
-        struct nlmsghdr hdr;
-        struct rtgenmsg gen;
-    } request;
-
-    memset(&request, 0, sizeof(request));
-
-    request.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(request.gen));
-    request.hdr.nlmsg_type = RTM_GETLINK;
-    request.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-    request.hdr.nlmsg_seq = 1;
-    request.hdr.nlmsg_pid = getpid();
-    request.gen.rtgen_family = AF_PACKET;
-
-    ssize_t result = TEMP_FAILURE_RETRY(::send(mSocketFd,
-                                               &request,
-                                               request.hdr.nlmsg_len,
-                                               0));
-    if (result < 0) {
-        return Result::error("Failed to request interfaces: %s",
-                             strerror(errno));
-    }
-    return Result::success();
-}
-
 void Monitor::closeSocket() {
     if (mSocketFd != -1) {
         ::close(mSocketFd);
@@ -188,23 +154,14 @@ void Monitor::handleNewLink(const struct nlmsghdr* hdr) {
 
     auto msg = reinterpret_cast<const struct ifinfomsg*>(NLMSG_DATA(hdr));
 
-    char name[IF_NAMESIZE + 1] = { 0 };
-    const unsigned int ifIndex = msg->ifi_index;
-    if (if_indextoname(ifIndex, name) == nullptr) {
-        LOGE("Unable to get interface name for interface index %u", ifIndex);
-    }
+    if (msg->ifi_change & IFF_UP) {
+        // The interface up/down flag changed, send a notification
+        char name[IF_NAMESIZE + 1] = { 0 };
+        if_indextoname(msg->ifi_index, name);
 
-    bool isUp = !!(msg->ifi_flags & IFF_UP);
-    auto iterator = mUpInterfaces.find(ifIndex);
-
-    if (iterator == mUpInterfaces.end() && isUp) {
-        // The interface was not known to be up but is up, known state changed
-        mUpInterfaces.insert(ifIndex);
-        mOnInterfaceStateCallback(ifIndex, name, InterfaceState::Up);
-    } else if (iterator != mUpInterfaces.end() && !isUp) {
-        // The interface was known to be up, now it's not, known state changed
-        mUpInterfaces.erase(iterator);
-        mOnInterfaceStateCallback(ifIndex, name, InterfaceState::Down);
+        InterfaceState state = (msg->ifi_flags & IFF_UP) ? InterfaceState::Up :
+                                                           InterfaceState::Down;
+        mOnInterfaceStateCallback(msg->ifi_index, name, state);
     }
 }
 

@@ -120,7 +120,6 @@ private:
      * Handle interrupt events from the sensor.
      */
     void onQemuSensorEvent(uint32_t frameNumber, Event e, nsecs_t timestamp);
-    using EmulatedCamera3::Initialize;
 
 private:
     /**************************************************************************

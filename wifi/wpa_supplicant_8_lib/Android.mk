@@ -74,6 +74,7 @@ LOCAL_CFLAGS := $(L_CFLAGS) \
 LOCAL_SRC_FILES := $(WPA_SRC_FILE)
 
 LOCAL_C_INCLUDES := \
+  device/google/gce/include \
   $(WPA_SUPPL_DIR_INCLUDE)\
 
 include $(BUILD_STATIC_LIBRARY)

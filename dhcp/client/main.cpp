@@ -18,9 +18,7 @@
 #include "log.h"
 
 static void usage(const char* program) {
-    ALOGE("Usage: %s [--no-gateway] -i <interface>", program);
-    ALOGE("  If the optional parameter --no-gateway is specified the client");
-    ALOGE("  will not configure the default gateway of the system.");
+    ALOGE("Usage: %s -i <interface>", program);
 }
 
 int main(int argc, char* argv[]) {
@@ -29,7 +27,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     const char* interfaceName = nullptr;
-    uint32_t options = 0;
 
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-i") == 0) {
@@ -40,8 +37,6 @@ int main(int argc, char* argv[]) {
                 usage(argv[0]);
                 return 1;
             }
-        } else if (strcmp(argv[i], "--no-gateway") == 0) {
-            options |= static_cast<uint32_t>(ClientOption::NoGateway);
         } else {
             ALOGE("ERROR: unknown parameters %s", argv[i]);
             usage(argv[0]);
@@ -54,7 +49,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    DhcpClient client(options);
+    DhcpClient client;
     Result res = client.init(interfaceName);
     if (!res) {
         ALOGE("Failed to initialize DHCP client: %s\n", res.c_str());
