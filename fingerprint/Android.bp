@@ -1,5 +1,4 @@
-//
-// Copyright (C) 2011 The Android Open Source Project
+// Copyright (C) 2013 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +13,14 @@
 // limitations under the License.
 
 cc_library_shared {
-    name: "audio.primary.goldfish",
+    name: "fingerprint.ranchu",
     vendor: true,
     relative_install_path: "hw",
+    srcs: ["fingerprint.c"],
     shared_libs: [
-        "libcutils",
         "liblog",
-        "libtinyalsa",
+        "libcutils",
     ],
-    srcs: [
-        "audio_hw.c",
-        "audio_vbuffer.c",
-        "ext_pcm.c",
-    ],
-    header_libs: [
-        "libhardware_headers",
-        "libcutils_headers",
-    ],
-    cflags: [
-        "-Wno-unused-parameter"
-    ],
+    static_libs: ["libqemud.ranchu"],
+    header_libs: ["libhardware_headers"],
 }
