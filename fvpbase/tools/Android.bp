@@ -1,5 +1,4 @@
-//
-// Copyright (C) 2011 The Android Open Source Project
+// Copyright (C) 2020 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,25 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-cc_library_shared {
-    name: "audio.primary.goldfish",
-    vendor: true,
-    relative_install_path: "hw",
-    shared_libs: [
-        "libcutils",
-        "liblog",
-        "libtinyalsa",
-    ],
-    srcs: [
-        "audio_hw.c",
-        "audio_vbuffer.c",
-        "ext_pcm.c",
-    ],
-    header_libs: [
-        "libhardware_headers",
-        "libcutils_headers",
-    ],
-    cflags: [
-        "-Wno-unused-parameter"
-    ],
+// The ARM FVP binds to all network interfaces for telnet and adb. This library
+// is a workaround to that. The corresponding LD_PRELOAD additions in
+// fvpbase/run_model ensure that we only bind to localhost.
+cc_library_host_shared {
+  name: "bind_to_localhost",
+  srcs: ["bind_to_localhost.cpp"],
+  stl: "none",
 }

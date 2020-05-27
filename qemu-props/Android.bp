@@ -1,5 +1,4 @@
-//
-// Copyright (C) 2011 The Android Open Source Project
+// Copyright (C) 2009 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,25 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-cc_library_shared {
-    name: "audio.primary.goldfish",
+// this file is used to build emulator-specific program tools
+// that should only run in the emulator.
+//
+
+cc_binary {
+    name: "qemu-props",
     vendor: true,
-    relative_install_path: "hw",
+    srcs: ["qemu-props.c"],
     shared_libs: [
         "libcutils",
         "liblog",
-        "libtinyalsa",
     ],
-    srcs: [
-        "audio_hw.c",
-        "audio_vbuffer.c",
-        "ext_pcm.c",
-    ],
-    header_libs: [
-        "libhardware_headers",
-        "libcutils_headers",
-    ],
-    cflags: [
-        "-Wno-unused-parameter"
+    static_libs: [
+        "libqemud.ranchu",
+        "libqemupipe.ranchu",
     ],
 }
