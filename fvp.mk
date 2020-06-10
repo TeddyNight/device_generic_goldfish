@@ -41,11 +41,12 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_product.mk)
 #
 $(call inherit-product, $(SRC_TARGET_DIR)/product/media_vendor.mk)
 
+PRODUCT_SOONG_NAMESPACES += device/generic/goldfish
+
 PRODUCT_PACKAGES += \
     android.hardware.audio.service \
     android.hardware.audio@6.0-impl:32 \
     android.hardware.audio.effect@6.0-impl:32 \
-    android.hardware.soundtrigger@2.2-impl \
     audio.primary.default \
     audio.r_submix.default \
     android.hardware.drm@1.0-service \
@@ -67,7 +68,9 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.bluetooth@1.1-service.sim \
     android.hardware.bluetooth.audio@2.0-impl
-PRODUCT_PROPERTY_OVERRIDES += bt.rootcanal_test_console=off
+PRODUCT_PROPERTY_OVERRIDES += vendor.bt.rootcanal_test_console=off
+
+PRODUCT_HOST_PACKAGES += bind_to_localhost
 
 PRODUCT_PACKAGE_OVERLAYS := device/generic/goldfish/overlay
 
@@ -85,12 +88,15 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/fvpbase/fstab.fvpbase:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.fvpbase \
     device/generic/goldfish/fvpbase/fstab.fvpbase.initrd:$(TARGET_COPY_OUT_RAMDISK)/fstab.fvpbase \
     device/generic/goldfish/fvpbase/init.fvpbase.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.fvpbase.rc \
+    device/generic/goldfish/fvpbase/required_images:required_images \
     frameworks/av/services/audiopolicy/config/audio_policy_configuration_generic.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_configuration.xml \
     frameworks/av/services/audiopolicy/config/primary_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/primary_audio_policy_configuration.xml \
     frameworks/av/services/audiopolicy/config/r_submix_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/r_submix_audio_policy_configuration.xml \
     frameworks/av/services/audiopolicy/config/audio_policy_volumes.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_volumes.xml \
     frameworks/av/services/audiopolicy/config/default_volume_tables.xml:$(TARGET_COPY_OUT_VENDOR)/etc/default_volume_tables.xml \
     frameworks/av/services/audiopolicy/config/surround_sound_configuration_5_0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/surround_sound_configuration_5_0.xml \
+
+PRODUCT_BUILD_BOOT_IMAGE := true
 
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     ro.hardware.egl=swiftshader \
@@ -103,11 +109,3 @@ WITH_DEXPREOPT_BOOT_IMG_AND_SYSTEM_SERVER_ONLY := false
 
 DEVICE_MANIFEST_FILE := device/generic/goldfish/fvpbase/manifest.xml
 
-# Normally, the bootloader is supposed to concatenate the Android initramfs
-# and the initramfs for the kernel modules and let the kernel combine
-# them. However, the bootloader that we're using with FVP (U-Boot) doesn't
-# support concatenation, so we implement it in the build system.
-droid: $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/ramdisk.img
-
-$(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/ramdisk.img: $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/ramdisk.img $(OUT_DIR)/target/product/$(PRODUCT_DEVICE)/boot/initramfs.img
-	gzip -dc $^ > $@

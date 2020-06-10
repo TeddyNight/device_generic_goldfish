@@ -18,6 +18,10 @@
 #
 $(call inherit-product-if-exists, frameworks/native/build/phone-xhdpi-2048-dalvik-heap.mk)
 
+PRODUCT_SOONG_NAMESPACES += \
+    device/generic/goldfish \
+    device/generic/goldfish-opengl
+
 PRODUCT_SYSTEM_EXT_PROPERTIES += ro.lockscreen.disable.default=1
 
 DISABLE_RILD_OEM_HOOK := true
@@ -35,11 +39,10 @@ PRODUCT_PACKAGES += \
     libril-goldfish-fork \
     qemu-props \
     audio.primary.goldfish \
-    audio.primary.goldfish_legacy \
     stagefright \
     fingerprint.ranchu \
-    android.hardware.graphics.composer@2.3-impl \
-    android.hardware.graphics.composer@2.3-service \
+    android.hardware.graphics.composer@2.1-impl \
+    android.hardware.graphics.composer@2.1-service \
     android.hardware.graphics.allocator@3.0-service \
     android.hardware.graphics.mapper@3.0-impl-ranchu \
     hwcomposer.ranchu \
@@ -71,13 +74,12 @@ PRODUCT_PACKAGES += \
     audio.r_submix.default \
     android.hardware.audio.service \
     android.hardware.audio@6.0-impl:32 \
-    android.hardware.audio.effect@6.0-impl:32 \
-    android.hardware.soundtrigger@2.2-impl
+    android.hardware.audio.effect@6.0-impl:32
 
 PRODUCT_PACKAGES += \
     android.hardware.bluetooth@1.1-service.sim \
     android.hardware.bluetooth.audio@2.0-impl
-PRODUCT_PROPERTY_OVERRIDES += bt.rootcanal_test_console=off
+PRODUCT_PROPERTY_OVERRIDES += vendor.bt.rootcanal_test_console=off
 
 PRODUCT_PACKAGES += \
     android.hardware.health@2.1-service \
@@ -103,10 +105,14 @@ endif
 
 ifneq ($(EMULATOR_VENDOR_NO_SENSORS),true)
 PRODUCT_PACKAGES += \
-    android.hardware.sensors@1.0-impl \
-    android.hardware.sensors@1.0-service \
-    sensors.ranchu
-DEVICE_MANIFEST_FILE += device/generic/goldfish/manifest.sensors.xml
+    android.hardware.sensors@2.0-service.multihal \
+    android.hardware.sensors@2.0-impl.ranchu
+# TODO(rkir):
+# add a soong namespace and move this into a.h.sensors@2.0-impl.ranchu
+# as prebuilt_etc. For now soong_namespace causes a build break because the fw
+# refers to our wifi HAL in random places.
+PRODUCT_COPY_FILES += \
+    device/generic/goldfish/sensors/hals.conf:$(TARGET_COPY_OUT_VENDOR)/etc/sensors/hals.conf
 endif
 
 PRODUCT_PACKAGES += \
@@ -135,11 +141,13 @@ PRODUCT_PACKAGES += \
     camera.device@1.0-impl \
     android.hardware.camera.provider@2.4-service \
     android.hardware.camera.provider@2.4-impl \
-    camera.goldfish \
-    camera.goldfish.jpeg \
     camera.ranchu \
     camera.ranchu.jpeg
 DEVICE_MANIFEST_FILE += device/generic/goldfish/manifest.camera.xml
+endif
+
+ifneq ($(EMULATOR_VENDOR_NO_SOUND_TRIGGER),true)
+PRODUCT_PACKAGES += android.hardware.soundtrigger@2.2-impl.ranchu
 endif
 
 PRODUCT_PACKAGES += \
