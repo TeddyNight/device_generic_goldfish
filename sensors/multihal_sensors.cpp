@@ -22,7 +22,7 @@
 #include "sensor_list.h"
 
 namespace goldfish {
-using ahs10::SensorType;
+using ahs21::SensorType;
 using ahs10::SensorFlagBits;
 using ahs10::MetaDataEventType;
 
@@ -91,7 +91,7 @@ MultihalSensors::~MultihalSensors() {
 }
 
 const std::string MultihalSensors::getName() {
-    return "hal_sensors_2_0_impl_ranchu";
+    return "hal_sensors_2_1_impl_ranchu";
 }
 
 Return<void> MultihalSensors::debug(const hidl_handle& fd, const hidl_vec<hidl_string>& args) {
@@ -100,7 +100,7 @@ Return<void> MultihalSensors::debug(const hidl_handle& fd, const hidl_vec<hidl_s
     return {};
 }
 
-Return<void> MultihalSensors::getSensorsList(getSensorsList_cb _hidl_cb) {
+Return<void> MultihalSensors::getSensorsList_2_1(getSensorsList_2_1_cb _hidl_cb) {
     std::vector<SensorInfo> sensors;
 
     uint32_t mask = m_availableSensorsMask;
@@ -205,7 +205,7 @@ Return<Result> MultihalSensors::flush(const int32_t sensorHandle) {
     return Result::OK;
 }
 
-Return<Result> MultihalSensors::injectSensorData(const Event& event) {
+Return<Result> MultihalSensors::injectSensorData_2_1(const Event& event) {
     if (!isSensorHandleValid(event.sensorHandle)) {
         return Result::BAD_VALUE;
     }
@@ -276,17 +276,14 @@ bool MultihalSensors::isSensorHandleValid(int sensorHandle) const {
 }
 
 void MultihalSensors::batchThread() {
-    using high_resolution_clock = std::chrono::high_resolution_clock;
-
     while (m_batchRunning) {
         std::unique_lock<std::mutex> lock(m_mtx);
         if (m_batchQueue.empty()) {
             m_batchUpdated.wait(lock);
         } else {
-            const int64_t t = m_batchQueue.top().timestamp;
-            const auto d = std::chrono::nanoseconds(t);
-            high_resolution_clock::time_point waitUntil(d);
-            m_batchUpdated.wait_until(lock, waitUntil);
+            const int64_t d =
+                m_batchQueue.top().timestamp - ::android::elapsedRealtimeNano();
+            m_batchUpdated.wait_for(lock, std::chrono::nanoseconds(d));
         }
 
         const int64_t nowNs = ::android::elapsedRealtimeNano();
