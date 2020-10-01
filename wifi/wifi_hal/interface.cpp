@@ -86,6 +86,9 @@ wifi_error Interface::getName(char* name, size_t size) {
     return WIFI_SUCCESS;
 }
 
+// Wifi legacy HAL implicitly assumes getLinkStats is blocking and
+// handler will be set to nullptr immediately after invocation.
+// Therefore, this function will wait until onLinkStatsReply is called.
 wifi_error Interface::getLinkStats(wifi_request_id requestId,
                                    wifi_stats_result_handler handler) {
     NetlinkMessage message(RTM_GETLINK, mNetlink.getSequenceNumber());
@@ -97,12 +100,21 @@ wifi_error Interface::getLinkStats(wifi_request_id requestId,
     info->ifi_flags = 0;
     info->ifi_change = 0xFFFFFFFF;
 
-    bool success = mNetlink.sendMessage(message,
-                                        std::bind(&Interface::onLinkStatsReply,
-                                                  this,
-                                                  requestId,
-                                                  handler,
-                                                  std::placeholders::_1));
+    std::condition_variable condition;
+    std::mutex mutex;
+    std::unique_lock<std::mutex> lock(mutex);
+    bool stopped = false;
+    auto callback = [this, requestId, &handler,
+        &mutex, &condition, &stopped] (const NetlinkMessage& message) {
+        stopped = true;
+        std::unique_lock<std::mutex> lock(mutex);
+        onLinkStatsReply(requestId, handler, message);
+        condition.notify_all();
+    };
+    bool success = mNetlink.sendMessage(message, callback);
+    while (!stopped) {
+        condition.wait(lock);
+    }
     return success ? WIFI_SUCCESS : WIFI_ERROR_UNKNOWN;
 }
 
@@ -254,6 +266,24 @@ Interface::getWakeReasonStats(WLAN_DRIVER_WAKE_REASON_CNT* wakeReasonCount) {
     if (wakeReasonCount == nullptr) {
         return WIFI_ERROR_INVALID_ARGS;
     }
+    return WIFI_SUCCESS;
+}
+
+wifi_error Interface::startSendingOffloadedPacket(wifi_request_id /*id*/,
+                                                  u16 /*ether_type*/,
+                                                  u8 * /*ip_packet*/,
+                                                  u16 /*ip_packet_len*/,
+                                                  u8 * /*src_mac_addr*/,
+                                                  u8 * /*dst_mac_addr*/,
+                                                  u32 /*period_msec*/) {
+    // Drop the packet and pretend everything is fine. Currentlty this is only
+    // used for keepalive packets to allow the CPU to go to sleep and let the
+    // hardware send keepalive packets on its own. By dropping this we lose the
+    // keepalive packets but networking will still be fine.
+    return WIFI_SUCCESS;
+}
+
+wifi_error Interface::stopSendingOffloadedPacket(wifi_request_id /*id*/) {
     return WIFI_SUCCESS;
 }
 

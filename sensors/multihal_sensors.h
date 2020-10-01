@@ -16,17 +16,22 @@
 
 #pragma once
 #include <android-base/unique_fd.h>
-#include <SubHal.h>
+#include <V2_1/SubHal.h>
+#include <atomic>
+#include <condition_variable>
 #include <cstdint>
+#include <queue>
 #include <thread>
+#include <vector>
 
 namespace goldfish {
 namespace ahs = ::android::hardware::sensors;
-namespace ahs20 = ahs::V2_0;
+namespace ahs21 = ahs::V2_1;
 namespace ahs10 = ahs::V1_0;
 
-using ahs20::implementation::IHalProxyCallback;
-using ahs10::Event;
+using ahs21::implementation::IHalProxyCallback;
+using ahs21::SensorInfo;
+using ahs21::Event;
 using ahs10::OperationMode;
 using ahs10::RateLevel;
 using ahs10::Result;
@@ -39,19 +44,19 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::sp;
 
-struct MultihalSensors : public ahs20::implementation::ISensorsSubHal {
+struct MultihalSensors : public ahs21::implementation::ISensorsSubHal {
     MultihalSensors();
     ~MultihalSensors();
 
     Return<void> debug(const hidl_handle& fd, const hidl_vec<hidl_string>& args) override;
-    Return<void> getSensorsList(getSensorsList_cb _hidl_cb) override;
+    Return<void> getSensorsList_2_1(getSensorsList_2_1_cb _hidl_cb) override;
     Return<Result> setOperationMode(OperationMode mode) override;
     Return<Result> activate(int32_t sensorHandle, bool enabled) override;
     Return<Result> batch(int32_t sensorHandle,
                            int64_t samplingPeriodNs,
                            int64_t maxReportLatencyNs) override;
     Return<Result> flush(int32_t sensorHandle) override;
-    Return<Result> injectSensorData(const Event& event) override;
+    Return<Result> injectSensorData_2_1(const Event& event) override;
 
 
     Return<void> registerDirectChannel(const SharedMemInfo& mem,
@@ -76,16 +81,23 @@ private:
         float lastProximityValue = kSensorNoValue;
         float lastLightValue = kSensorNoValue;
         float lastRelativeHumidityValue = kSensorNoValue;
+        float lastHingeAngle0Value = kSensorNoValue;
+        float lastHingeAngle1Value = kSensorNoValue;
+        float lastHingeAngle2Value = kSensorNoValue;
     };
 
+    bool isSensorHandleValid(int sensorHandle) const;
+    bool isSensorActive(int sensorHandle) const {
+        return m_activeSensorsMask & (1u << sensorHandle);  // m_mtx required
+    }
     static bool activateQemuSensorImpl(int pipe, int sensorHandle, bool enabled);
-    bool disableAllSensors();
+    bool setAllQemuSensors(bool enabled);
     void parseQemuSensorEvent(const int pipe, QemuSensorsProtocolState* state);
     void postSensorEvent(const Event& event);
-    void postSensorEventLocked(const Event& event);
+    void doPostSensorEventLocked(const SensorInfo& sensor, const Event& event);
 
     void qemuSensorListenerThread();
-    static void qemuSensorListenerThreadStart(MultihalSensors* that);
+    void batchThread();
 
     static constexpr char kCMD_QUIT = 'q';
     bool qemuSensorThreadSendCommand(char cmd) const;
@@ -102,7 +114,32 @@ private:
     uint32_t                m_activeSensorsMask = 0;
     OperationMode           m_opMode = OperationMode::NORMAL;
     sp<IHalProxyCallback>   m_halProxyCallback;
-    mutable std::mutex      m_apiMtx;
+
+    // batching
+    struct BatchEventRef {
+        int64_t  timestamp = -1;
+        int      sensorHandle = -1;
+        int      generation = 0;
+
+        bool operator<(const BatchEventRef &rhs) const {
+            // not a typo, we want m_batchQueue.top() to be the smallest timestamp
+            return timestamp > rhs.timestamp;
+        }
+    };
+
+    struct BatchInfo {
+        Event       event;
+        int64_t     samplingPeriodNs = 0;
+        int         generation = 0;
+    };
+
+    std::priority_queue<BatchEventRef>      m_batchQueue;
+    std::vector<BatchInfo>                  m_batchInfo;
+    std::condition_variable                 m_batchUpdated;
+    std::thread                             m_batchThread;
+    std::atomic<bool>                       m_batchRunning = true;
+
+    mutable std::mutex                      m_mtx;
 };
 
 }  // namespace goldfish
