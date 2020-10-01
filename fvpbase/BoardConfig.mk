@@ -1,4 +1,4 @@
-# Copyright (C) 2019 The Android Open Source Project
+# Copyright (C) 2020 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,11 +18,13 @@ TARGET_ARCH_VARIANT := armv8-a
 TARGET_CPU_VARIANT := generic
 TARGET_CPU_ABI := arm64-v8a
 
+ifeq ($(FVP_MULTILIB_BUILD),true)
 TARGET_2ND_ARCH := arm
 TARGET_2ND_CPU_ABI := armeabi-v7a
 TARGET_2ND_CPU_ABI2 := armeabi
 TARGET_2ND_ARCH_VARIANT := armv8-a
 TARGET_2ND_CPU_VARIANT := generic
+endif
 
 include build/make/target/board/BoardConfigMainlineCommon.mk
 
@@ -63,7 +65,7 @@ BOARD_KERNEL_CMDLINE := \
 	console=ttyAMA0 \
 	earlycon=pl011,0x1c090000 \
 	androidboot.hardware=fvpbase \
-	androidboot.boot_device=bus@8000000/bus@8000000:motherboard/bus@8000000:motherboard:iofpga@3,00000000/1c130000.virtio-block \
+	androidboot.boot_device=bus@8000000/bus@8000000:motherboard-bus/bus@8000000:motherboard-bus:iofpga-bus@300000000/1c130000.virtio-block \
 	loglevel=9 \
 
 BOARD_SEPOLICY_DIRS += device/generic/goldfish/fvpbase/sepolicy

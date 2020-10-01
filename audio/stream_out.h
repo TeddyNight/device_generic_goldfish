@@ -20,6 +20,7 @@
 #include <android/hardware/audio/6.0/IDevice.h>
 #include "stream_common.h"
 #include "io_thread.h"
+#include "primary_device.h"
 
 namespace android {
 namespace hardware {
@@ -36,16 +37,13 @@ using namespace ::android::hardware::audio::common::V6_0;
 using namespace ::android::hardware::audio::V6_0;
 
 struct StreamOut : public IStreamOut {
-    StreamOut(sp<IDevice> dev,
-              void (*unrefDevice)(IDevice*),
+    StreamOut(sp<PrimaryDevice> dev,
               int32_t ioHandle,
               const DeviceAddress& device,
               const AudioConfig& config,
               hidl_bitfield<AudioOutputFlag> flags,
               const SourceMetadata& sourceMetadata);
     ~StreamOut();
-
-    static constexpr int16_t kVolumeDenominator = 1 << 14;
 
     // IStream
     Return<uint64_t> getFrameSize() override;
@@ -88,6 +86,7 @@ struct StreamOut : public IStreamOut {
     Return<void> getNextWriteTimestamp(getNextWriteTimestamp_cb _hidl_cb) override;
     Return<Result> setCallback(const sp<IStreamOutCallback>& callback) override;
     Return<Result> clearCallback() override;
+    Return<Result> setEventCallback(const sp<IStreamOutEventCallback>& callback) override;
     Return<void> supportsPauseAndResume(supportsPauseAndResume_cb _hidl_cb) override;
     Return<Result> pause() override;
     Return<Result> resume() override;
@@ -96,8 +95,15 @@ struct StreamOut : public IStreamOut {
     Return<Result> flush() override;
     Return<void> getPresentationPosition(getPresentationPosition_cb _hidl_cb) override;
     Return<Result> selectPresentation(int32_t presentationId, int32_t programId) override;
+    Return<void> getDualMonoMode(getDualMonoMode_cb _hidl_cb) override;
+    Return<Result> setDualMonoMode(DualMonoMode mode) override;
+    Return<void> getAudioDescriptionMixLevel(getAudioDescriptionMixLevel_cb _hidl_cb) override;
+    Return<Result> setAudioDescriptionMixLevel(float leveldB) override;
+    Return<void> getPlaybackRateParameters(getPlaybackRateParameters_cb _hidl_cb) override;
+    Return<Result> setPlaybackRateParameters(const PlaybackRate &playbackRate) override;
 
-    int16_t getVolumeNumerator() const { return mVolumeNumerator; };
+    void setMasterVolume(float volume);
+    float getEffectiveVolume() const { return mEffectiveVolume; }
     const DeviceAddress &getDeviceAddress() const { return mCommon.m_device; }
     const AudioConfig &getAudioConfig() const { return mCommon.m_config; }
     const hidl_bitfield<AudioOutputFlag> &getAudioOutputFlags() const { return mCommon.m_flags; }
@@ -106,13 +112,17 @@ struct StreamOut : public IStreamOut {
 
 private:
     Result closeImpl(bool fromDctor);
+    void updateEffectiveVolumeLocked();
 
-    sp<IDevice> mDev;
-    void (* const mUnrefDevice)(IDevice*);
+    sp<PrimaryDevice> mDev;
     const StreamCommon mCommon;
     const SourceMetadata mSourceMetadata;
     std::unique_ptr<IOThread> mWriteThread;
-    std::atomic<int16_t> mVolumeNumerator = kVolumeDenominator;
+
+    float mMasterVolume = 1.0f;  // requires mMutex
+    float mStreamVolume = 1.0f;  // requires mMutex
+    std::atomic<float> mEffectiveVolume = 1.0f;
+    std::mutex mMutex;
 
     // The count is not reset to zero when output enters standby.
     uint64_t mFrames = 0;
