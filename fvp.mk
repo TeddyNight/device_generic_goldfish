@@ -1,5 +1,5 @@
 #
-# Copyright 2019 The Android Open Source Project
+# Copyright 2020 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_product.mk)
 # All components inherited here go to vendor image
 #
 $(call inherit-product, $(SRC_TARGET_DIR)/product/media_vendor.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 
 PRODUCT_SOONG_NAMESPACES += device/generic/goldfish
 
@@ -108,4 +109,7 @@ PRODUCT_REQUIRES_INSECURE_EXECMEM_FOR_SWIFTSHADER := true
 WITH_DEXPREOPT_BOOT_IMG_AND_SYSTEM_SERVER_ONLY := false
 
 DEVICE_MANIFEST_FILE := device/generic/goldfish/fvpbase/manifest.xml
+
+# Use a multilib setup (see fvpbase/BoardConfig.mk).
+FVP_MULTILIB_BUILD := true
 
