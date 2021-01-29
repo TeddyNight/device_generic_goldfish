@@ -1,6 +1,12 @@
 This document describes how to build and run an Android system image targeting
 the ARM Fixed Virtual Platform.
 
+### New to Android?
+
+If you do not already have the ``repo`` tool, or a copy of the Android
+source tree, please follow the Android instructions for [downloading the
+source](https://source.android.com/setup/build/downloading).
+
 ### Building userspace
 
 ```
@@ -27,8 +33,8 @@ mkdir android-kernel-mainline
 cd android-kernel-mainline
 repo init -u https://android.googlesource.com/kernel/manifest -b common-android-mainline
 repo sync
-repo start android-mainline common && repo download -c common 1145352
-BUILD_CONFIG=common/build.config.fvp build/build.sh
+BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh -j72
+BUILD_CONFIG=common-modules/virtual-device/build.config.fvp build/build.sh  -j72
 ```
 
 The resulting kernel image and DTB must then be copied into the product output directory:
@@ -36,6 +42,15 @@ The resulting kernel image and DTB must then be copied into the product output d
 ```
 cp out/android-mainline/dist/Image $ANDROID_PRODUCT_OUT/kernel
 cp out/android-mainline/dist/fvp-base-revc.dtb out/android-mainline/dist/initramfs.img $ANDROID_PRODUCT_OUT/
+```
+
+The above instructions currently only work for the ``fvp_mini``
+target. If you would like to use the ``fvp`` target instead, the
+following commands must be run after ``repo sync``:
+
+```
+repo start android-mainline common
+repo download -c common 1463463
 ```
 
 ### Building the firmware (ARM Trusted Firmware and U-Boot)
@@ -91,8 +106,10 @@ connection.
 
 ### MTE support
 
-**WARNING**: The kernel MTE support patches are experimental and the userspace
-interface is subject to change.
+By default only a small subset of platform binaries enables memory tagging. To
+build everything with MTE, add ``export SANITIZE_TARGET=memtag_heap`` before
+running ``m`` for Async mode, or ``export SANITIZE_TARGET=memtag_heap
+SANITIZE_TARGET_DIAG=memtag_heap`` for Sync mode.
 
 To launch the model with MTE support, the following additional parameters
 must be used:
@@ -116,11 +133,41 @@ cd binutils-2.33.1
 ./configure --prefix=$PWD/inst --target=aarch64-linux-gnu
 make
 make install
-for i in $PWD/inst/bin/*; do
-  ln -sf $i /path/to/android-kernel-mainline/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/$(basename $i)
-  ln -sf $i /path/to/android-kernel-mainline/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/$(basename $i | sed -e 's/gnu/android/g')
-done
+ln -sf $PWD/inst/bin/aarch64-linux-gnu-as /path/to/android-kernel-mainline/prebuilts/gas/linux-x86/aarch64-linux-gnu-as
 ```
+
+### Running the image in QEMU
+
+As an alternative to using FVP, the image may also be run in QEMU.
+QEMU is generally much faster than FVP, but its support for the
+latest ARM architectural features is relatively new compared to FVP,
+so it may have more bugs.
+
+As of the time of writing, no released version of QEMU can successfully
+boot the system to GUI due to bugs in its MTE support, so a development
+version with bug fixes must be used. The instructions below check
+out a commit that has been successfully tested.
+```
+git clone https://github.com/qemu/qemu
+cd qemu
+git checkout 9cd69f1a270235b652766f00b94114f48a2d603f
+mkdir build
+cd build
+../configure --target-list=aarch64-softmmu
+ninja qemu-system-aarch64
+```
+Then set the value of the ``QEMU_BIN`` environment variable to the path to
+the resulting ``qemu-system-aarch64`` binary, and run the following command
+in a lunched environment to start the emulator:
+```
+device/generic/goldfish/fvpbase/run_qemu
+```
+Additional QEMU arguments may be passed by appending them to the ``run_qemu``
+command. One useful argument is ``-nographic``, which disables the GUI, which
+may be useful when working with ``fvp_mini`` or if the GUI is not needed.
+
+To terminate the emulator, press ``Ctrl-A c q <Enter>`` or close the GUI
+window.
 
 ### Accessing the model via adb
 
