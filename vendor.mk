@@ -55,6 +55,10 @@ PRODUCT_PACKAGES += \
     toybox_vendor \
     android.hardware.wifi@1.0-service \
     android.hardware.biometrics.fingerprint@2.1-service \
+    android.hardware.media.c2@1.0-service-goldfish \
+    libcodec2_goldfish_vp8dec \
+    libcodec2_goldfish_vp9dec \
+    libcodec2_goldfish_avcdec \
     sh_vendor \
     ip_vendor \
     iw_vendor \
@@ -122,7 +126,7 @@ PRODUCT_PACKAGES += \
     android.hardware.drm@1.0-service \
     android.hardware.drm@1.0-impl \
     android.hardware.drm@1.3-service.clearkey \
-    android.hardware.drm@1.3-service.widevine
+
 
 PRODUCT_PACKAGES += \
     android.hardware.power-service.example \
@@ -233,12 +237,11 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.contexthub@1.1-service.mock
 
-# Goldfish does not support ION needed for Codec 2.0
-# still disable it until b/143473631 is fixed
-# now this is setup on init.ranchu.rc
+# for 32, 32+64 guest, default using omx, but can be
+# modified at command line as follows
 # -qemu -append qemu.media.ccodec=<value> can override it; default 0
-#PRODUCT_PROPERTY_OVERRIDES += \
-#    debug.stagefright.ccodec=0
+PRODUCT_PROPERTY_OVERRIDES += \
+    debug.stagefright.ccodec=0
 
 # Enable Incremental on the device via kernel driver
 PRODUCT_PROPERTY_OVERRIDES += ro.incremental.enable=yes
@@ -279,6 +282,7 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.bluetooth.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.bluetooth.xml \
     system/bt/vendor_libs/test_vendor_lib/data/controller_properties.json:vendor/etc/bluetooth/controller_properties.json \
     frameworks/native/data/etc/android.hardware.wifi.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.xml \
+    frameworks/native/data/etc/android.hardware.wifi.passpoint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.passpoint.xml \
     frameworks/native/data/etc/android.hardware.wifi.direct.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.direct.xml \
     device/generic/goldfish/data/etc/handheld_core_hardware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/handheld_core_hardware.xml \
     device/generic/goldfish/camera/media_profiles.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_profiles_V1_0.xml \
@@ -293,6 +297,7 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.camera.concurrent.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.concurrent.xml \
     frameworks/native/data/etc/android.hardware.camera.front.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.front.xml \
     frameworks/native/data/etc/android.hardware.camera.full.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.full.xml \
+    frameworks/native/data/etc/android.hardware.camera.raw.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.raw.xml \
     frameworks/native/data/etc/android.hardware.fingerprint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.fingerprint.xml \
     frameworks/native/data/etc/android.hardware.vulkan.level-1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.level.xml \
     frameworks/native/data/etc/android.hardware.vulkan.compute-0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.compute.xml \
