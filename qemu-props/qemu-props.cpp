@@ -33,6 +33,7 @@
 #  define  DD(...)    ((void)0)
 #endif
 
+#include <string_view>
 #include <cutils/properties.h>
 #include <unistd.h>
 #include <qemu_pipe_bp.h>
@@ -48,13 +49,47 @@
 
 #define QEMU_MISC_PIPE "QemuMiscPipe"
 
+namespace {
+// qemu-props will not set these properties.
+const char* const k_properties_to_ignore[] = {
+    "dalvik.vm.heapsize",
+    "ro.opengles.version",
+    "qemu.adb.secure",
+    nullptr,
+};
+
+// These properties will not be prefixed with "vendor.".
+const char* const k_system_properties[] = {
+    "qemu.sf.lcd_density",
+    "qemu.hw.mainkeys",
+    nullptr,
+};
+
+bool check_if_property_in_list(const char* prop_name, const char* const* prop_list) {
+    for (; *prop_list; ++prop_list) {
+        if (!strcmp(prop_name, *prop_list)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// We don't want to rename properties which already have the prefix
+// or the system properties.
+bool need_prepend_prefix(const char* prop, const std::string_view prefix) {
+    return strncmp(prefix.data(), prop, prefix.size()) &&
+           !check_if_property_in_list(prop, k_system_properties);
+}
+}  // namespace
+
 int s_QemuMiscPipe = -1;
 void static notifyHostBootComplete();
 void static sendHeartBeat();
 void static sendMessage(const char* mesg);
+void static closeMiscPipe();
 extern void parse_virtio_serial();
 
-int  main(void)
+int main(void)
 {
     int  qemud_fd, count = 0;
 
@@ -62,7 +97,7 @@ int  main(void)
     {
         int  tries = MAX_TRIES;
 
-        while (1) {
+        while (true) {
             qemud_fd = qemud_channel_open( "boot-properties" );
             if (qemud_fd >= 0)
                 break;
@@ -88,50 +123,55 @@ int  main(void)
     /* read each system property as a single line from the service,
      * until exhaustion.
      */
-    for (;;)
-    {
+    while (true) {
 #define  BUFF_SIZE   (PROPERTY_KEY_MAX + PROPERTY_VALUE_MAX + 2)
         DD("receiving..");
-        char* q;
+        char* prop_value;
         char  temp[BUFF_SIZE];
-        char  vendortemp[BUFF_SIZE];
         int   len = qemud_channel_recv(qemud_fd, temp, sizeof(temp) - 1);
 
         /* lone NUL-byte signals end of properties */
-        if (len < 0 || len > BUFF_SIZE-1 || temp[0] == '\0')
+        if (len < 0 || len > (BUFF_SIZE - 1) || !temp[0]) {
             break;
+        }
 
         temp[len] = '\0';  /* zero-terminate string */
 
         DD("received: %.*s", len, temp);
 
         /* separate propery name from value */
-        q = strchr(temp, '=');
-        if (q == NULL) {
+        prop_value = strchr(temp, '=');
+        if (!prop_value) {
             DD("invalid format, ignored.");
             continue;
         }
-        *q++ = '\0';
 
-        char* final_prop_name = NULL;
-        if (strcmp(temp, "qemu.sf.lcd.density") == 0 ) {
-            final_prop_name = temp;
-        } else if (strcmp(temp, "qemu.hw.mainkeys") == 0 ) {
-            final_prop_name = temp;
-        } else if (strcmp(temp, "qemu.cmdline") == 0 ) {
-            final_prop_name = temp;
-        } else if (strcmp(temp, "dalvik.vm.heapsize") == 0 ) {
-            continue; /* cannot set it here */
-        } else if (strcmp(temp, "ro.opengles.version") == 0 ) {
-            continue; /* cannot set it here */
-        } else {
-            snprintf(vendortemp, sizeof(vendortemp), "vendor.%s", temp);
-            final_prop_name = vendortemp;
+        *prop_value = 0;
+        ++prop_value;
+
+        if (check_if_property_in_list(temp, k_properties_to_ignore)) {
+            ALOGI("ignoring '%s' property", temp);
+            continue;   // do not set these
         }
-        if (property_set(temp, q) < 0) {
-            ALOGW("could not set property '%s' to '%s'", final_prop_name, q);
+
+        char renamed_property[BUFF_SIZE];
+        const char* final_prop_name = nullptr;
+
+        using namespace std::literals;
+        static constexpr std::string_view k_vendor_prefix = "vendor."sv;
+        if (need_prepend_prefix(temp, k_vendor_prefix)) {
+            snprintf(renamed_property, sizeof(renamed_property), "%.*s%s",
+                     int(k_vendor_prefix.size()), k_vendor_prefix.data(), temp);
+
+            final_prop_name = renamed_property;
         } else {
-            ALOGI("successfully set property '%s' to '%s'", final_prop_name, q);
+            final_prop_name = temp;
+        }
+
+        if (property_set(final_prop_name, prop_value) < 0) {
+            ALOGW("could not set property '%s' to '%s'", final_prop_name, prop_value);
+        } else {
+            ALOGI("successfully set property '%s' to '%s'", final_prop_name, prop_value);
             count += 1;
         }
     }
@@ -160,10 +200,7 @@ int  main(void)
     }
 
     /* finally, close the channel and exit */
-    if (s_QemuMiscPipe >= 0) {
-        close(s_QemuMiscPipe);
-        s_QemuMiscPipe = -1;
-    }
+    closeMiscPipe();
     DD("exiting (%d properties set).", count);
     return 0;
 }
@@ -184,13 +221,33 @@ void sendMessage(const char* mesg) {
             return;
         }
     }
-    char set[64];
-    snprintf(set, sizeof(set), "%s", mesg);
-    int pipe_command_length = strlen(set)+1; //including trailing '\0'
-    qemu_pipe_write_fully(s_QemuMiscPipe, &pipe_command_length, sizeof(pipe_command_length));
-    qemu_pipe_write_fully(s_QemuMiscPipe, set, pipe_command_length);
-    qemu_pipe_read_fully(s_QemuMiscPipe, &pipe_command_length, sizeof(pipe_command_length));
-    if (pipe_command_length > (int)(sizeof(set)) || pipe_command_length <= 0)
+
+    int32_t cmd_len = strlen(mesg) + 1; //including trailing '\0'
+    qemu_pipe_write_fully(s_QemuMiscPipe, &cmd_len, sizeof(cmd_len));
+    qemu_pipe_write_fully(s_QemuMiscPipe, mesg, cmd_len);
+
+    int r = qemu_pipe_read_fully(s_QemuMiscPipe, &cmd_len, sizeof(cmd_len));
+    if (r || (cmd_len < 0)) {
+        closeMiscPipe();
         return;
-    qemu_pipe_read_fully(s_QemuMiscPipe, set, pipe_command_length);
+    }
+
+    while (cmd_len > 0) {
+        char buf[64];
+        const size_t chunk = std::min<size_t>(cmd_len, sizeof(buf));
+        r = qemu_pipe_read_fully(s_QemuMiscPipe, buf, chunk);
+        if (r) {
+            closeMiscPipe();
+            return;
+        } else {
+            cmd_len -= chunk;
+        }
+    }
+}
+
+void closeMiscPipe() {
+    if (s_QemuMiscPipe >= 0) {
+        close(s_QemuMiscPipe);
+        s_QemuMiscPipe = -1;
+    }
 }
