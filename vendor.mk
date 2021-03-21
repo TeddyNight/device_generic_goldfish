@@ -39,11 +39,8 @@ PRODUCT_PACKAGES += \
     libandroidemu \
     libOpenglCodecCommon \
     libOpenglSystemCommon \
-    libgoldfish-ril \
-    libril-modem-lib \
     libcuttlefish-ril-2 \
     libgoldfish-rild \
-    libril-goldfish-fork \
     qemu-props \
     stagefright \
     fingerprint.ranchu \
