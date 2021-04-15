@@ -39,11 +39,8 @@ PRODUCT_PACKAGES += \
     libandroidemu \
     libOpenglCodecCommon \
     libOpenglSystemCommon \
-    libgoldfish-ril \
-    libril-modem-lib \
     libcuttlefish-ril-2 \
     libgoldfish-rild \
-    libril-goldfish-fork \
     qemu-props \
     stagefright \
     fingerprint.ranchu \
@@ -76,7 +73,11 @@ PRODUCT_PACKAGES += \
     libGLESv2_enc \
     libvulkan_enc \
     libGLESv2_emulation \
-    libGLESv1_enc
+    libGLESv1_enc \
+    libEGL_angle \
+    libGLESv1_CM_angle \
+    libGLESv2_angle \
+    libfeature_support_angle.so
 endif
 
 PRODUCT_PACKAGES += \
@@ -141,8 +142,7 @@ PRODUCT_PROPERTY_OVERRIDES += ro.logd.size=1M \
 
 ifneq ($(EMULATOR_VENDOR_NO_CAMERA),true)
 PRODUCT_PACKAGES += \
-    camera.device@1.0-impl \
-    android.hardware.camera.provider@2.4-service \
+    android.hardware.camera.provider@2.4-service_64 \
     android.hardware.camera.provider@2.4-impl \
     camera.ranchu \
     camera.ranchu.jpeg \
