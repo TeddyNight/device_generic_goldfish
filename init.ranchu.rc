@@ -15,6 +15,7 @@ on early-init
 
     # true if ram is <= 2G
     setprop ro.config.low_ram ${ro.boot.config.low_ram}
+    setprop dalvik.vm.dex2oat64.enabled 1
 
 on init
     # set RLIMIT_MEMLOCK to 8MB for BPF network statistics
@@ -169,7 +170,7 @@ service qemu-props /vendor/bin/qemu-props
     group root
     oneshot
 
-service goldfish-logcat /system/bin/logcat -f /dev/hvc1 ${vendor.qemu.logcat_filter}
+service goldfish-logcat /system/bin/logcat -f /dev/hvc1 ${ro.boot.logcat}
     class main
     user logd
     group root logd
