@@ -6,16 +6,23 @@ on fs
 
 on late-fs
     # Mount RW partitions which need run fsck
-    exec_start wait_for_keymaster
     mount_all /vendor/etc/fstab.ranchu --late
 
 on early-init
     mount proc proc /proc remount hidepid=2,gid=3009
-    setprop ro.hardware.egl emulation
     setprop ro.hardware.vulkan ranchu
 
     # true if ram is <= 2G
     setprop ro.config.low_ram ${ro.boot.config.low_ram}
+    setprop dalvik.vm.dex2oat64.enabled 1
+
+    setprop ro.soc.manufacturer AOSP
+    setprop ro.soc.model ranchu
+
+    # DEPRECATED, use ro.boot.qemu instead. The GTS tests still refer to
+    # ro.kernel.qemu to decide if a device is emulator. Should be removed once
+    # GTS tests are migrated to ro.boot.qemu.
+    setprop ro.kernel.qemu 1
 
 on init
     # set RLIMIT_MEMLOCK to 8MB for BPF network statistics
@@ -54,9 +61,12 @@ on init
 
 on post-fs-data
     setprop vold.post_fs_data_done 1
+    mkdir /data/vendor/adb 0755 root root
     mkdir /data/vendor/var 0755 root root
     mkdir /data/vendor/var/run 0755 root root
     mkdir /data/vendor/var/run/netns 0755 root root
+
+    start qemu-adb-keys
 
 on zygote-start
     # Create the directories used by the Wireless subsystem
@@ -76,6 +86,7 @@ on boot
 
     setprop dalvik.vm.heapsize 192m
     setprop dalvik.vm.heapsize ${ro.boot.dalvik.vm.heapsize}
+    setprop dalvik.vm.checkjni ${ro.boot.dalvik.vm.checkjni}
     chown root system /sys/power/wake_lock
     chown root system /sys/power/wake_unlock
     setprop ro.hardware.audio.primary goldfish
@@ -92,20 +103,27 @@ service ranchu-setup /vendor/bin/init.ranchu-core.sh
     group root
     oneshot
 
+service qemu-adb-setup /system_ext/bin/init.qemu-adb-keys.sh
+    class core
+    user root
+    group shell
+    disabled  # Started when qemu-adb-keys is stopped
+    oneshot
+
 on property:vendor.qemu.timezone=*
     setprop persist.sys.timezone ${vendor.qemu.timezone}
 
-on property:vendor.qemu.android.bootanim=0
+on property:ro.boot.debug.sf.nobootanimation=1
     setprop debug.sf.nobootanimation 1
 
 on property:dev.bootcomplete=1
     setprop vendor.qemu.dev.bootcomplete 1
     start ranchu-setup
 
-on post-fs-data && property:ro.kernel.qemu.wifi=1
+on post-fs-data && property:ro.boot.qemu.wifi=1
     start create_router_ns
 
-on post-fs-data && property:ro.kernel.qemu.virtiowifi=1
+on post-fs-data && property:ro.boot.qemu.virtiowifi=1
     start ranchu-net
 
 on property:vendor.qemu.networknamespace=ready
@@ -169,7 +187,13 @@ service qemu-props /vendor/bin/qemu-props
     group root
     oneshot
 
-service goldfish-logcat /system/bin/logcat -f /dev/hvc1 ${vendor.qemu.logcat_filter}
+service qemu-adb-keys /vendor/bin/qemu-adb-keys
+    class core
+    user root
+    group root
+    oneshot
+
+service goldfish-logcat /system/bin/logcat -f /dev/hvc1 ${ro.boot.logcat}
     class main
     user logd
     group root logd
