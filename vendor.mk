@@ -41,6 +41,7 @@ PRODUCT_PACKAGES += \
     libOpenglSystemCommon \
     libcuttlefish-ril-2 \
     libgoldfish-rild \
+    qemu-adb-keys \
     qemu-props \
     stagefright \
     fingerprint.ranchu \
@@ -66,7 +67,7 @@ PRODUCT_PACKAGES += \
     libstagefrighthw \
     libstagefright_goldfish_vpxdec \
     libstagefright_goldfish_avcdec \
-    MultiDisplayProvider
+    MultiDisplayProvider \
 
 ifneq ($(BUILD_EMULATOR_OPENGL),false)
 PRODUCT_PACKAGES += \
@@ -76,7 +77,11 @@ PRODUCT_PACKAGES += \
     libGLESv2_enc \
     libvulkan_enc \
     libGLESv2_emulation \
-    libGLESv1_enc
+    libGLESv1_enc \
+    libEGL_angle \
+    libGLESv1_CM_angle \
+    libGLESv2_angle \
+    libfeature_support_angle.so
 endif
 
 PRODUCT_PACKAGES += \
@@ -101,6 +106,21 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_PACKAGES += \
     DisplayCutoutEmulationEmu01Overlay \
+    EmulationPixel5Overlay \
+    SystemUIEmulationPixel5Overlay \
+    EmulationPixel4XLOverlay \
+    SystemUIEmulationPixel4XLOverlay \
+    EmulationPixel4Overlay \
+    SystemUIEmulationPixel4Overlay \
+    EmulationPixel4aOverlay \
+    SystemUIEmulationPixel4aOverlay \
+    EmulationPixel3XLOverlay \
+    SystemUIEmulationPixel3XLOverlay \
+    SystemUIEmulationPixel3Overlay \
+    SystemUIEmulationPixel3aOverlay \
+    SystemUIEmulationPixel3aXLOverlay \
+    EmulationPixel2XLOverlay \
+    SystemUIEmulationPixel2XLOverlay \
     NavigationBarMode2ButtonOverlay \
 
 ifneq ($(EMULATOR_VENDOR_NO_GNSS),true)
@@ -248,12 +268,15 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/data/etc/apns-conf.xml:data/misc/apns/apns-conf.xml \
     device/generic/goldfish/radio/RadioConfig/radioconfig.xml:data/misc/emulator/config/radioconfig.xml \
     device/generic/goldfish/data/etc/iccprofile_for_sim0.xml:data/misc/modem_simulator/iccprofile_for_sim0.xml \
+    device/google/cuttlefish/host/commands/modem_simulator/files/iccprofile_for_sim0_for_CtsCarrierApiTestCases.xml:data/misc/modem_simulator/iccprofile_for_carrierapitests.xml \
     device/generic/goldfish/data/etc/numeric_operator.xml:data/misc/modem_simulator/etc/modem_simulator/files/numeric_operator.xml \
     device/generic/goldfish/data/etc/local.prop:data/local.prop \
+    device/generic/goldfish/init.qemu-adb-keys.sh:$(TARGET_COPY_OUT_SYSTEM_EXT)/bin/init.qemu-adb-keys.sh \
     device/generic/goldfish/init.ranchu-core.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.ranchu-core.sh \
     device/generic/goldfish/init.ranchu-net.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.ranchu-net.sh \
     device/generic/goldfish/wifi/init.wifi.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.wifi.sh \
     device/generic/goldfish/init.ranchu.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.ranchu.rc \
+    device/generic/goldfish/init.system_ext.rc:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/init/init.system_ext.rc \
     device/generic/goldfish/fstab.ranchu:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu \
     device/generic/goldfish/ueventd.ranchu.rc:$(TARGET_COPY_OUT_VENDOR)/ueventd.rc \
     device/generic/goldfish/input/goldfish_rotary.idc:$(TARGET_COPY_OUT_VENDOR)/usr/idc/goldfish_rotary.idc \
@@ -273,7 +296,6 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/data/etc/config.ini:config.ini \
     device/generic/goldfish/wifi/simulated_hostapd.conf:$(TARGET_COPY_OUT_VENDOR)/etc/simulated_hostapd.conf \
     device/generic/goldfish/wifi/wpa_supplicant.conf:$(TARGET_COPY_OUT_VENDOR)/etc/wifi/wpa_supplicant.conf \
-    device/generic/goldfish/wifi/WifiConfigStore.xml:data/misc/wifi/WifiConfigStore.xml \
     frameworks/native/data/etc/android.hardware.bluetooth_le.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.bluetooth_le.xml \
     frameworks/native/data/etc/android.hardware.bluetooth.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.bluetooth.xml \
     system/bt/vendor_libs/test_vendor_lib/data/controller_properties.json:vendor/etc/bluetooth/controller_properties.json \
