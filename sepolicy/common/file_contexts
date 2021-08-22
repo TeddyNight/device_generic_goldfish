@@ -26,9 +26,11 @@
 # logcat
 /dev/hvc1                    u:object_r:serial_device:s0
 
+/system_ext/bin/init\.qemu-adb-keys\.sh u:object_r:goldfish_system_setup_exec:s0
 /vendor/bin/init\.ranchu-core\.sh u:object_r:goldfish_setup_exec:s0
 /vendor/bin/init\.ranchu-net\.sh u:object_r:goldfish_setup_exec:s0
 /vendor/bin/init\.wifi\.sh   u:object_r:goldfish_setup_exec:s0
+/vendor/bin/qemu-adb-keys    u:object_r:qemu_adb_keys_exec:s0
 /vendor/bin/qemu-props       u:object_r:qemu_props_exec:s0
 /vendor/bin/mac80211_create_radios u:object_r:mac80211_create_radios_exec:s0
 /vendor/bin/createns         u:object_r:createns_exec:s0
@@ -66,6 +68,7 @@
 /vendor/lib(64)?/libandroidemu\.so       u:object_r:same_process_hal_file:s0
 /vendor/lib(64)?/libdrm.so  u:object_r:same_process_hal_file:s0
 /vendor/lib(64)?/hw/android\.hardware\.graphics\.mapper@3\.0-impl-ranchu\.so   u:object_r:same_process_hal_file:s0
+/vendor/lib(64)?/libGoldfishProfiler\.so       u:object_r:same_process_hal_file:s0
 
 # data
 /data/vendor/mediadrm(/.*)?            u:object_r:mediadrm_vendor_data_file:s0
