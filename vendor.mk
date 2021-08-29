@@ -84,11 +84,15 @@ PRODUCT_PACKAGES += \
     libGLESv2_angle \
     libfeature_support_angle.so
 endif
-
+#
+# Enable bluetooth
 PRODUCT_PACKAGES += \
-    android.hardware.bluetooth@1.1-service.sim \
-    android.hardware.bluetooth.audio@2.0-impl
-PRODUCT_PROPERTY_OVERRIDES += vendor.bt.rootcanal_test_console=off
+    bt_vhci_forwarder \
+    android.hardware.bluetooth@1.1-service.btlinux \
+    android.hardware.bluetooth.audio@2.1-impl
+ #
+# Bluetooth se policies
+BOARD_SEPOLICY_DIRS += system/bt/vendor_libs/linux/sepolicy
 
 PRODUCT_PACKAGES += \
     android.hardware.health@2.1-service \
@@ -176,9 +180,11 @@ endif
 ifneq ($(EMULATOR_VENDOR_NO_SOUND),true)
 PRODUCT_PACKAGES += \
     android.hardware.audio.service \
-    android.hardware.audio@6.0-impl.ranchu \
+    android.hardware.audio@7.0-impl.ranchu \
     android.hardware.soundtrigger@2.2-impl.ranchu \
-    android.hardware.audio.effect@6.0-impl \
+    android.hardware.audio.effect@7.0-impl \
+
+DEVICE_MANIFEST_FILE += device/generic/goldfish/audio/android.hardware.audio.effects@7.0.xml
 
 PRODUCT_COPY_FILES += \
     device/generic/goldfish/audio/policy/audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_configuration.xml \
