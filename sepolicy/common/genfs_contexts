@@ -30,6 +30,13 @@ genfscon sysfs /devices/pci0000:00/0000:00:06.0/virtio3/block/vdd u:object_r:sys
 genfscon sysfs /devices/pci0000:00/0000:00:07.0/virtio4/block/vde u:object_r:sysfs_virtio_block:s0
 genfscon sysfs /devices/pci0000:00/0000:00:08.0/virtio5/block/vdf u:object_r:sysfs_virtio_block:s0
 
+# for arm64 virtio block devices
+genfscon sysfs /devices/platform/a003600.virtio_mmio/virtio2/block/vda/stat u:object_r:sysfs_virtio_block:s0
+genfscon sysfs /devices/platform/a003800.virtio_mmio/virtio3/block/vdb/stat u:object_r:sysfs_virtio_block:s0
+genfscon sysfs /devices/platform/a003a00.virtio_mmio/virtio4/block/vdc/stat u:object_r:sysfs_virtio_block:s0
+genfscon sysfs /devices/platform/a003c00.virtio_mmio/virtio5/block/vdd/stat u:object_r:sysfs_virtio_block:s0
+genfscon sysfs /devices/platform/a003e00.virtio_mmio/virtio6/block/vde/stat u:object_r:sysfs_virtio_block:s0
+
 # /sys/class/power_supply
 genfscon sysfs /devices/platform/9020000.goldfish_battery/power_supply u:object_r:sysfs_batteryinfo:s0
 
@@ -76,11 +83,47 @@ genfscon sysfs /devices/LNXSYSTM:00/LNXSYBUS:00/PNP0A03:00/device:20/wakeup/wake
 genfscon sysfs /devices/LNXSYSTM:00/LNXSYBUS:00/PNP0A03:00/wakeup/wakeup           u:object_r:sysfs_wakeup:s0
 genfscon sysfs /devices/platform/GFSH0001:00/power_supply/ac/wakeup                u:object_r:sysfs_wakeup:s0
 genfscon sysfs /devices/platform/GFSH0001:00/power_supply/battery/wakeup           u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup28      u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup28/event_count u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup29      u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup29/event_count u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup30      u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup30/event_count u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup31      u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup31/event_count u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup32      u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup32/event_count u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup33      u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/alarmtimer.0.auto/wakeup/wakeup33/event_count u:object_r:sysfs_wakeup:s0
 genfscon sysfs /devices/pnp0/00:00/rtc/rtc0/wakeup                                 u:object_r:sysfs_wakeup:s0
 genfscon sysfs /devices/pnp0/00:00/wakeup/wakeup                                   u:object_r:sysfs_wakeup:s0
 genfscon sysfs /devices/virtual/wakeup/wakeup                                      u:object_r:sysfs_wakeup:s0
-genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup33                        u:object_r:sysfs_wakeup:s0
-genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup34                        u:object_r:sysfs_wakeup:s0
+
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup34                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup34/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup35                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup35/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup36                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup36/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup37                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup37/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup38                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup38/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup39                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.1/wakeup/wakeup39/event_count            u:object_r:sysfs_wakeup:s0
+
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup35                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup35/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup36                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup36/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup37                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup37/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup38                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup38/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup39                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup39/event_count            u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup40                        u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/rtc-test.2/wakeup/wakeup40/event_count            u:object_r:sysfs_wakeup:s0
 
 genfscon sysfs /bus/iio/devices                                                    u:object_r:sysfs_iio_devices:s0
 
