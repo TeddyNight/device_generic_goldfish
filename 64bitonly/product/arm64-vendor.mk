@@ -3,9 +3,6 @@ include device/generic/goldfish/arm64-kernel.mk
 PRODUCT_PROPERTY_OVERRIDES += \
        vendor.rild.libpath=/vendor/lib64/libgoldfish-ril.so
 
-PRODUCT_PACKAGES += \
-    emulatorip
-
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.crypto.dm_default_key.options_format.version=2
 
@@ -36,6 +33,7 @@ endif
 PRODUCT_COPY_FILES += \
     $(EMULATOR_KERNEL_FILE):kernel-ranchu \
     device/generic/goldfish/data/etc/advancedFeatures.ini.arm:advancedFeatures.ini \
+    device/generic/goldfish/camera/media_codecs_performance_c2_arm64.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_performance_c2.xml \
 
 EMULATOR_VENDOR_NO_GNSS := true
 
