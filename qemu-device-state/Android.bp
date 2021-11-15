@@ -1,5 +1,4 @@
-//
-// Copyright (C) 2019 The Android Open Source Project
+// Copyright (C) 2021 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// this file is used to build emulator-specific program tools
+// that should only run in the emulator.
 //
 
 package {
@@ -24,32 +26,19 @@ package {
 }
 
 cc_binary {
-    name: "wifi_forwarder",
+    name: "qemu-device-state",
     vendor: true,
-    cppflags: [
-             "-Wall",
-             "-Werror",
-             "--std=c++17",
-            ],
     srcs: [
-           "frame.cpp",
-           "local_connection.cpp",
-           "main.cpp",
-           "netlink_message.cpp",
-           "netlink_socket.cpp",
-           "poller.cpp",
-           "remote_connection.cpp",
-           "wifi_forwarder.cpp",
-          ],
+        "qemu-device-state.cpp",
+    ],
     shared_libs: [
-        "libcutils",
+        "libbase",
         "liblog",
-        "libnl",
-        "libpcap",
-        "libutils",
-        "libutilscallstack",
     ],
     static_libs: [
-        "libqemupipe.ranchu",
+        "libfstab",
+    ],
+    cflags: [
+        "-DLOG_TAG=\"qemu-device-state\"",
     ],
 }
