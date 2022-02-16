@@ -38,8 +38,6 @@ const char* const kQemuSensorName[] = {
     "hinge-angle1",
     "hinge-angle2",
     "heart-rate",
-    "rgbc-light",
-    "wrist-tilt",
 };
 
 const SensorInfo kAllSensors[] = {
@@ -315,27 +313,6 @@ const SensorInfo kAllSensors[] = {
         .maxDelay = 500000,
         .flags = SensorFlagBits::DATA_INJECTION |
                  SensorFlagBits::ON_CHANGE_MODE
-    },
-    {
-      // rgbc-light
-    },
-    {
-        .sensorHandle = kSensorHandleWristTilt,
-        .name = "Goldfish wrist tilt gesture sensor",
-        .vendor = kAospVendor,
-        .version = 1,
-        .type = SensorType::WRIST_TILT_GESTURE,
-        .typeAsString = "android.sensor.wrist_tilt_gesture",
-        .maxRange = 1.0,
-        .resolution = 1.0,
-        .power = 20.0,
-        .minDelay = 0,
-        .fifoReservedEventCount = 0,
-        .fifoMaxEventCount = 0,
-        .maxDelay = 500000,
-        .flags = SensorFlagBits::DATA_INJECTION |
-                 SensorFlagBits::SPECIAL_REPORTING_MODE |
-                 SensorFlagBits::WAKE_UP
     }};
 
 constexpr int kSensorNumber = sizeof(kAllSensors) / sizeof(kAllSensors[0]);
