@@ -42,6 +42,7 @@ SKIP_BOOT_JARS_CHECK ?= true
 
 PRODUCT_PACKAGES += \
     com.android.runtime \
+    gdbserver \
     init_vendor \
     ip \
     ping \
