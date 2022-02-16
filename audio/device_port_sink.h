@@ -16,18 +16,18 @@
 
 #pragma once
 #include <memory>
-#include PATH(android/hardware/audio/common/COMMON_TYPES_FILE_VERSION/types.h)
-#include PATH(android/hardware/audio/CORE_TYPES_FILE_VERSION/types.h)
+#include <android/hardware/audio/common/6.0/types.h>
+#include <android/hardware/audio/6.0/types.h>
 #include "ireader.h"
 
 namespace android {
 namespace hardware {
 namespace audio {
-namespace CPP_VERSION {
+namespace V6_0 {
 namespace implementation {
 
-using namespace ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION;
-using namespace ::android::hardware::audio::CORE_TYPES_CPP_VERSION;
+using namespace ::android::hardware::audio::common::V6_0;
+using namespace ::android::hardware::audio::V6_0;
 
 struct DevicePortSink {
     virtual ~DevicePortSink() {}
@@ -37,14 +37,12 @@ struct DevicePortSink {
     static std::unique_ptr<DevicePortSink> create(size_t readerBufferSizeHint,
                                                   const DeviceAddress &,
                                                   const AudioConfig &,
-                                                  const hidl_vec<AudioInOutFlag> &,
+                                                  const hidl_bitfield<AudioOutputFlag> &,
                                                   uint64_t &frames);
-
-    static bool validateDeviceAddress(const DeviceAddress &);
 };
 
 }  // namespace implementation
-}  // namespace CPP_VERSION
+}  // namespace V6_0
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
