@@ -85,7 +85,6 @@ private:
         float lastHingeAngle1Value = kSensorNoValue;
         float lastHingeAngle2Value = kSensorNoValue;
         float lastHeartRateValue = kSensorNoValue;
-        float lastWristTiltMeasurement = -1;
     };
 
     bool isSensorHandleValid(int sensorHandle) const;
