@@ -15,29 +15,20 @@
  */
 
 #include <log/log.h>
-//#include <cutils/bitops.h>
+#include <cutils/bitops.h>
 #include <cutils/sched_policy.h>
 #include <system/audio.h>
 #include <sys/resource.h>
 #include <pthread.h>
-#include PATH(APM_XSD_ENUMS_H_FILENAME)
 #include "util.h"
 #include "debug.h"
-
-namespace xsd {
-using namespace ::android::audio::policy::configuration::CPP_VERSION;
-}
 
 namespace android {
 namespace hardware {
 namespace audio {
-namespace CPP_VERSION {
+namespace V6_0 {
 namespace implementation {
 namespace util {
-
-using ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION::AudioConfigBaseOptional;
-using ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION::AudioPortExtendedInfo;
-using ::android::hardware::audio::CORE_TYPES_CPP_VERSION::AudioMicrophoneDirectionality;
 
 namespace {
 
@@ -45,47 +36,34 @@ const std::array<uint32_t, 8> kSupportedRatesHz = {
     8000, 11025, 16000, 22050, 24000, 32000, 44100, 48000
 };
 
-bool checkSampleRateHz(uint32_t value, uint32_t &suggested) {
+const std::array<hidl_bitfield<AudioChannelMask>, 4> kSupportedInChannelMask = {
+    AudioChannelMask::IN_LEFT | 0,
+    AudioChannelMask::IN_RIGHT | 0,
+    AudioChannelMask::IN_FRONT | 0,
+    AudioChannelMask::IN_STEREO | 0,
+};
+
+const std::array<hidl_bitfield<AudioChannelMask>, 4> kSupportedOutChannelMask = {
+    AudioChannelMask::OUT_FRONT_LEFT | 0,
+    AudioChannelMask::OUT_FRONT_RIGHT | 0,
+    AudioChannelMask::OUT_FRONT_CENTER | 0,
+    AudioChannelMask::OUT_STEREO | 0,
+};
+
+const std::array<AudioFormat, 1> kSupportedAudioFormats = {
+    AudioFormat::PCM_16_BIT,
+};
+
+bool checkSampleRateHz(uint32_t value, uint32_t &suggest) {
     for (const uint32_t supported : kSupportedRatesHz) {
         if (value <= supported) {
-            suggested = supported;
-            return value == supported;
+            suggest = supported;
+            return (value == supported);
         }
     }
 
-    suggested = kSupportedRatesHz.back();
+    suggest = kSupportedRatesHz.back();
     return FAILURE(false);
-}
-
-bool checkChannelMask(const bool isOut,
-                      const AudioChannelMask &value,
-                      AudioChannelMask &suggested) {
-    switch (xsd::stringToAudioChannelMask(value)) {
-    case xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_MONO:
-    case xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO:
-    case xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO:
-    case xsd::AudioChannelMask::AUDIO_CHANNEL_IN_STEREO:
-        suggested = value;
-        return true;
-
-    default:
-        suggested = toString(isOut ?
-            xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO :
-            xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO);
-        return FAILURE(false);
-    }
-}
-
-bool checkFormat(const AudioFormat &value, AudioFormat &suggested) {
-    switch (xsd::stringToAudioFormat(value)) {
-    case xsd::AudioFormat::AUDIO_FORMAT_PCM_16_BIT:
-        suggested = value;
-        return true;
-
-    default:
-        suggested = toString(xsd::AudioFormat::AUDIO_FORMAT_PCM_16_BIT);
-        return FAILURE(false);
-    }
 }
 
 size_t align(size_t v, size_t a) {
@@ -119,111 +97,56 @@ MicrophoneInfo getMicrophoneInfo() {
     return mic;
 }
 
-size_t countChannels(const AudioChannelMask &mask) {
-    return xsd::getChannelCount(mask);
+size_t countChannels(hidl_bitfield<AudioChannelMask> mask) {
+    return popcount(mask);
 }
 
-size_t getBytesPerSample(const AudioFormat &format) {
-    if (format == "AUDIO_FORMAT_PCM_16_BIT") {
-        return 2;
-    } else {
-        ALOGE("util::%s:%d unknown format, '%s'", __func__, __LINE__, format.c_str());
-        return 0;
-    }
+size_t getBytesPerSample(AudioFormat format) {
+    return audio_bytes_per_sample(static_cast<audio_format_t>(format));
 }
 
-bool checkAudioConfig(const AudioConfig &cfg) {
-    if (xsd::isUnknownAudioFormat(cfg.base.format)
-            || xsd::isUnknownAudioChannelMask(cfg.base.channelMask)) {
-        return false;
-    }
-    if (cfg.offloadInfo.getDiscriminator() ==
-            AudioConfig::OffloadInfo::hidl_discriminator::info) {
-        if (const auto& info = cfg.offloadInfo.info();
-                xsd::isUnknownAudioFormat(info.base.format)
-                || xsd::isUnknownAudioChannelMask(info.base.channelMask)
-                || xsd::isUnknownAudioStreamType(info.streamType)
-                || xsd::isUnknownAudioUsage(info.usage)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool checkAudioConfig(const bool isOut,
+bool checkAudioConfig(bool isOut,
                       size_t duration_ms,
-                      const AudioConfig &src,
+                      const AudioConfig &cfg,
                       AudioConfig &suggested) {
-    bool result = true;
-    suggested = src;
+    bool valid = checkSampleRateHz(cfg.sampleRateHz, suggested.sampleRateHz);
 
-    if (!checkSampleRateHz(src.base.sampleRateHz, suggested.base.sampleRateHz)) {
-        result = false;
-    }
-
-    if (!checkChannelMask(isOut, src.base.channelMask, suggested.base.channelMask)) {
-        result = false;
-    }
-
-    if (!checkFormat(src.base.format, suggested.base.format)) {
-        result = false;
-    }
-
-    if (src.frameCount == 0) {
-        suggested.frameCount = getBufferSizeFrames(duration_ms, src.base.sampleRateHz);
-    }
-
-    return result;
-}
-
-bool checkAudioPortConfig(const AudioPortConfig &cfg) {
-    if (cfg.base.format.getDiscriminator() ==
-            AudioConfigBaseOptional::Format::hidl_discriminator::value) {
-        if (xsd::isUnknownAudioFormat(cfg.base.format.value())) {
-            return false;
+    if (isOut) {
+        if (std::find(kSupportedOutChannelMask.begin(),
+                      kSupportedOutChannelMask.end(),
+                      cfg.channelMask) == kSupportedOutChannelMask.end()) {
+            suggested.channelMask = AudioChannelMask::OUT_STEREO | 0;
+            valid = FAILURE(false);
+        } else {
+            suggested.channelMask = cfg.channelMask;
+        }
+    } else {
+        if (std::find(kSupportedInChannelMask.begin(),
+                      kSupportedInChannelMask.end(),
+                      cfg.channelMask) == kSupportedInChannelMask.end()) {
+            suggested.channelMask = AudioChannelMask::IN_STEREO | 0;
+            valid = FAILURE(false);
+        } else {
+            suggested.channelMask = cfg.channelMask;
         }
     }
-    if (cfg.base.channelMask.getDiscriminator() ==
-            AudioConfigBaseOptional::ChannelMask::hidl_discriminator::value) {
-        if (xsd::isUnknownAudioChannelMask(cfg.base.channelMask.value())) {
-            return false;
-        }
+
+    if (std::find(kSupportedAudioFormats.begin(),
+                  kSupportedAudioFormats.end(),
+                  cfg.format) == kSupportedAudioFormats.end()) {
+        suggested.format = AudioFormat::PCM_16_BIT;
+        valid = FAILURE(false);
+    } else {
+        suggested.format = cfg.format;
     }
-    if (cfg.gain.getDiscriminator() ==
-            AudioPortConfig::OptionalGain::hidl_discriminator::config) {
-        for (const auto& gainMode : cfg.gain.config().mode) {
-            if (xsd::isUnknownAudioGainMode(gainMode)) {
-                return false;
-            }
-        }
-        if (xsd::isUnknownAudioChannelMask(cfg.gain.config().channelMask)) {
-            return false;
-        }
-    }
-    switch (cfg.ext.getDiscriminator()) {
-        case AudioPortExtendedInfo::hidl_discriminator::device:
-            if (xsd::isUnknownAudioDevice(cfg.ext.device().deviceType)) {
-                return false;
-            }
-            break;
-        case AudioPortExtendedInfo::hidl_discriminator::mix:
-            switch (cfg.ext.mix().useCase.getDiscriminator()) {
-                case AudioPortExtendedInfo::AudioPortMixExt::UseCase::hidl_discriminator::stream:
-                    if (xsd::isUnknownAudioStreamType(cfg.ext.mix().useCase.stream())) {
-                        return false;
-                    }
-                    break;
-                case AudioPortExtendedInfo::AudioPortMixExt::UseCase::hidl_discriminator::source:
-                    if (xsd::isUnknownAudioSource(cfg.ext.mix().useCase.source())) {
-                        return false;
-                    }
-                    break;
-            }
-            break;
-        default:
-            break;
-    }
-    return true;
+
+    suggested.offloadInfo = cfg.offloadInfo;    // don't care
+
+    suggested.frameCount = (cfg.frameCount == 0)
+        ? getBufferSizeFrames(duration_ms, suggested.sampleRateHz)
+        : cfg.frameCount;
+
+    return valid;
 }
 
 TimeSpec nsecs2TimeSpec(nsecs_t ns) {
@@ -240,7 +163,7 @@ void setThreadPriority(int prio) {
 
 }  // namespace util
 }  // namespace implementation
-}  // namespace CPP_VERSION
+}  // namespace V6_0
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
