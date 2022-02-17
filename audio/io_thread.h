@@ -20,7 +20,7 @@
 namespace android {
 namespace hardware {
 namespace audio {
-namespace V6_0 {
+namespace CPP_VERSION {
 namespace implementation {
 
 struct IOThread {
@@ -35,7 +35,7 @@ struct IOThread {
 };
 
 }  // namespace implementation
-}  // namespace V6_0
+}  // namespace CPP_VERSION
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
