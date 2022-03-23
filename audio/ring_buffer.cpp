@@ -20,7 +20,7 @@
 namespace android {
 namespace hardware {
 namespace audio {
-namespace CPP_VERSION {
+namespace V6_0 {
 namespace implementation {
 
 RingBuffer::RingBuffer(size_t capacity)
@@ -149,7 +149,7 @@ size_t RingBuffer::consume(const ContiniousLockedChunk &lock, size_t size) {
 }
 
 }  // namespace implementation
-}  // namespace CPP_VERSION
+}  // namespace V6_0
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
