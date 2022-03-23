@@ -21,7 +21,7 @@
 namespace android {
 namespace hardware {
 namespace audio {
-namespace CPP_VERSION {
+namespace V6_0 {
 namespace implementation {
 namespace aops {
 
@@ -73,7 +73,7 @@ l1:     STEP;
 
 }  // namespace aops
 }  // namespace implementation
-}  // namespace CPP_VERSION
+}  // namespace V6_0
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
