@@ -16,21 +16,23 @@
 
 #pragma once
 #include <memory>
-#include <android/hardware/audio/common/7.0/types.h>
-#include <android/hardware/audio/7.0/types.h>
+#include PATH(android/hardware/audio/common/COMMON_TYPES_FILE_VERSION/types.h)
+#include PATH(android/hardware/audio/CORE_TYPES_FILE_VERSION/types.h)
 #include "ireader.h"
 
 namespace android {
 namespace hardware {
 namespace audio {
-namespace V7_0 {
+namespace CPP_VERSION {
 namespace implementation {
 
-using namespace ::android::hardware::audio::common::V7_0;
-using namespace ::android::hardware::audio::V7_0;
+using namespace ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION;
+using namespace ::android::hardware::audio::CORE_TYPES_CPP_VERSION;
 
 struct DevicePortSink {
     virtual ~DevicePortSink() {}
+    virtual Result start() = 0;
+    virtual Result stop() = 0;
     virtual Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) = 0;
     virtual size_t write(float volume, size_t bytesToWrite, IReader &) = 0;
 
@@ -44,7 +46,7 @@ struct DevicePortSink {
 };
 
 }  // namespace implementation
-}  // namespace V7_0
+}  // namespace CPP_VERSION
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android

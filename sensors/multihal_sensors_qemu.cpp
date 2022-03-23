@@ -222,7 +222,10 @@ void MultihalSensors::parseQemuSensorEvent(const int pipe,
     } else if (const char* values = testPrefix(buf, end, "hinge-angle0", ':')) {
         if (sscanf(values, "%f", &payload->scalar) == 1) {
             if (!approximatelyEqual(state->lastHingeAngle0Value,
-                                    payload->scalar, 0.001)) {
+                                    payload->scalar, 0.001) &&
+                // b/197586273, ignore the state tracking if system sensor
+                // service has not enabled hinge sensor
+                isSensorActive(kSensorHandleHingeAngle0)) {
                 event.timestamp = nowNs + state->timeBiasNs;
                 event.sensorHandle = kSensorHandleHingeAngle0;
                 event.sensorType = SensorType::HINGE_ANGLE;
@@ -234,7 +237,8 @@ void MultihalSensors::parseQemuSensorEvent(const int pipe,
     } else if (const char* values = testPrefix(buf, end, "hinge-angle1", ':')) {
         if (sscanf(values, "%f", &payload->scalar) == 1) {
             if (!approximatelyEqual(state->lastHingeAngle1Value,
-                                    payload->scalar, 0.001)) {
+                                    payload->scalar, 0.001) &&
+                isSensorActive(kSensorHandleHingeAngle1)) {
                 event.timestamp = nowNs + state->timeBiasNs;
                 event.sensorHandle = kSensorHandleHingeAngle1;
                 event.sensorType = SensorType::HINGE_ANGLE;
@@ -246,7 +250,8 @@ void MultihalSensors::parseQemuSensorEvent(const int pipe,
     } else if (const char* values = testPrefix(buf, end, "hinge-angle2", ':')) {
         if (sscanf(values, "%f", &payload->scalar) == 1) {
             if (!approximatelyEqual(state->lastHingeAngle2Value,
-                                    payload->scalar, 0.001)) {
+                                    payload->scalar, 0.001) &&
+                isSensorActive(kSensorHandleHingeAngle2)) {
                 event.timestamp = nowNs + state->timeBiasNs;
                 event.sensorHandle = kSensorHandleHingeAngle2;
                 event.sensorType = SensorType::HINGE_ANGLE;
@@ -288,7 +293,7 @@ void MultihalSensors::parseQemuSensorEvent(const int pipe,
      } else if (const char* values = testPrefix(buf, end, "guest-sync", ':')) {
         long long value;
         if ((sscanf(values, "%lld", &value) == 1) && (value >= 0)) {
-            const int64_t guestTimeNs = static_cast<int64_t>(value * 1000ll);
+            const int64_t guestTimeNs = static_cast<int64_t>(value * 1000LL);
             const int64_t timeBiasNs = guestTimeNs - nowNs;
             state->timeBiasNs =
                 std::min(int64_t(0),
