@@ -16,7 +16,6 @@
 
 #pragma once
 #include <android/hardware/gnss/2.0/IGnss.h>
-#include <chrono>
 #include <mutex>
 
 namespace goldfish {
@@ -36,14 +35,10 @@ public:
     void gnssNmea(const ahg10::GnssUtcTime, const hidl_string&) const;
 
     void setCallback20(sp<ahg20::IGnssCallback>);
-    void start();
     void cleanup();
 
 private:
-    bool isWarmedUd() const;
-
     sp<ahg20::IGnssCallback> cb20;
-    std::chrono::steady_clock::time_point warmedUpTime;
     mutable std::mutex       mtx;
 };
 

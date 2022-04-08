@@ -18,7 +18,6 @@
 #include <memory>
 #include <android/hardware/audio/common/6.0/types.h>
 #include <android/hardware/audio/6.0/types.h>
-#include "iwriter.h"
 
 namespace android {
 namespace hardware {
@@ -32,10 +31,9 @@ using namespace ::android::hardware::audio::V6_0;
 struct DevicePortSource {
     virtual ~DevicePortSource() {}
     virtual Result getCapturePosition(uint64_t &frames, uint64_t &time) = 0;
-    virtual size_t read(float volume, size_t bytesToRead, IWriter &) = 0;
+    virtual int read(void *data, size_t nBytes) = 0;
 
-    static std::unique_ptr<DevicePortSource> create(size_t writerBufferSizeHint,
-                                                    const DeviceAddress &,
+    static std::unique_ptr<DevicePortSource> create(const DeviceAddress &,
                                                     const AudioConfig &,
                                                     const hidl_bitfield<AudioOutputFlag> &,
                                                     uint64_t &frames);

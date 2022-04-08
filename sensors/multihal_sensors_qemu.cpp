@@ -69,16 +69,19 @@ bool MultihalSensors::activateQemuSensorImpl(const int pipe,
     }
 }
 
-bool MultihalSensors::setAllQemuSensors(const bool enabled) {
-    uint32_t mask = m_availableSensorsMask;
-    for (int i = 0; mask; ++i, mask >>= 1) {
-        if (mask & 1) {
-            if (!activateQemuSensorImpl(m_qemuSensorsFd.get(), i, enabled)) {
-                return false;
+bool MultihalSensors::disableAllSensors() {
+    if (m_opMode == OperationMode::NORMAL) {
+        uint32_t mask = m_activeSensorsMask;
+        for (int i = 0; mask; ++i, mask >>= 1) {
+            if (mask & 1) {
+                if (!activateQemuSensorImpl(m_qemuSensorsFd.get(), i, false)) {
+                    return false;
+                }
             }
         }
     }
 
+    m_activeSensorsMask = 0;
     return true;
 }
 
@@ -222,10 +225,7 @@ void MultihalSensors::parseQemuSensorEvent(const int pipe,
     } else if (const char* values = testPrefix(buf, end, "hinge-angle0", ':')) {
         if (sscanf(values, "%f", &payload->scalar) == 1) {
             if (!approximatelyEqual(state->lastHingeAngle0Value,
-                                    payload->scalar, 0.001) &&
-                // b/197586273, ignore the state tracking if system sensor
-                // service has not enabled hinge sensor
-                isSensorActive(kSensorHandleHingeAngle0)) {
+                                    payload->scalar, 0.001)) {
                 event.timestamp = nowNs + state->timeBiasNs;
                 event.sensorHandle = kSensorHandleHingeAngle0;
                 event.sensorType = SensorType::HINGE_ANGLE;
@@ -237,8 +237,7 @@ void MultihalSensors::parseQemuSensorEvent(const int pipe,
     } else if (const char* values = testPrefix(buf, end, "hinge-angle1", ':')) {
         if (sscanf(values, "%f", &payload->scalar) == 1) {
             if (!approximatelyEqual(state->lastHingeAngle1Value,
-                                    payload->scalar, 0.001) &&
-                isSensorActive(kSensorHandleHingeAngle1)) {
+                                    payload->scalar, 0.001)) {
                 event.timestamp = nowNs + state->timeBiasNs;
                 event.sensorHandle = kSensorHandleHingeAngle1;
                 event.sensorType = SensorType::HINGE_ANGLE;
@@ -250,26 +249,12 @@ void MultihalSensors::parseQemuSensorEvent(const int pipe,
     } else if (const char* values = testPrefix(buf, end, "hinge-angle2", ':')) {
         if (sscanf(values, "%f", &payload->scalar) == 1) {
             if (!approximatelyEqual(state->lastHingeAngle2Value,
-                                    payload->scalar, 0.001) &&
-                isSensorActive(kSensorHandleHingeAngle2)) {
+                                    payload->scalar, 0.001)) {
                 event.timestamp = nowNs + state->timeBiasNs;
                 event.sensorHandle = kSensorHandleHingeAngle2;
                 event.sensorType = SensorType::HINGE_ANGLE;
                 postSensorEvent(event);
                 state->lastHingeAngle2Value = payload->scalar;
-            }
-            parsed = true;
-        }
-    } else if (const char* values = testPrefix(buf, end, "heart-rate", ':')) {
-        if (sscanf(values, "%f", &payload->heartRate.bpm) == 1) {
-            if (!approximatelyEqual(state->lastHeartRateValue,
-                                    payload->heartRate.bpm, 0.001)) {
-                payload->heartRate.status = SensorStatus::ACCURACY_HIGH;
-                event.timestamp = nowNs + state->timeBiasNs;
-                event.sensorHandle = kSensorHandleHeartRate;
-                event.sensorType = SensorType::HEART_RATE;
-                postSensorEvent(event);
-                state->lastHeartRateValue = payload->heartRate.bpm;
             }
             parsed = true;
         }

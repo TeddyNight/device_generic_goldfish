@@ -13,33 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package {
-    default_applicable_licenses: ["device_generic_goldfish_audio_license"],
-}
-
-// Added automatically by a large-scale-change
-// See: http://go/android-license-faq
-license {
-    name: "device_generic_goldfish_audio_license",
-    visibility: [":__subpackages__"],
-    license_kinds: [
-        "SPDX-license-identifier-Apache-2.0",
-    ],
-    license_text: [
-        "NOTICE",
-    ],
-}
-
-cc_library_shared {
-    name: "android.hardware.audio.legacy@6.0-impl.ranchu",
-    defaults: ["android.hardware.audio@6.0-impl_default"],
-    relative_install_path: "hw",
+cc_binary {
+    name: "android.hardware.audio.service.ranchu",
     vendor: true,
-}
-
-cc_library_shared {
-    name: "android.hardware.audio@6.0-impl.ranchu",
-    vendor: true,
+    init_rc: ["android.hardware.audio.service.ranchu.rc"],
     vintf_fragments: ["android.hardware.audio@6.0-impl.ranchu.xml"],
     relative_install_path: "hw",
     defaults: ["hidl_defaults"],
@@ -54,8 +31,6 @@ cc_library_shared {
         "device_port_source.cpp",
         "device_port_sink.cpp",
         "talsa.cpp",
-        "ring_buffer.cpp",
-        "audio_ops.cpp",
         "util.cpp",
     ],
     shared_libs: [
@@ -64,6 +39,7 @@ cc_library_shared {
         "android.hardware.audio.common@6.0-util",
         "libaudioutils",
         "libbase",
+        "libbinder",
         "libcutils",
         "libhidlbase",
         "liblog",
@@ -76,13 +52,13 @@ cc_library_shared {
         "libaudio_system_headers",
     ],
     cflags: [
-        "-DLOG_TAG=\"android.hardware.audio@6.0-impl.ranchu\"",
+        "-DLOG_TAG=\"android.hardware.audio.service.ranchu\"",
     ],
-    // a.h.audio@6.0-impl.ranchu (see above) loads a.h.audio.legacy@6.0-impl
+    // android.hardware.audio.service.ranchu loads android.hardware.audio@6.0-impl
     // which loads audio.r_submix.default which provides the r_submix device,
     // see b/161485545. Should be retired once a better r_submix is available.
     required: [
-        "android.hardware.audio.legacy@6.0-impl.ranchu",
+        "android.hardware.audio@6.0-impl",
         "audio.r_submix.default",
     ],
 }

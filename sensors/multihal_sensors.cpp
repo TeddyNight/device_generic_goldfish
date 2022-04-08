@@ -24,12 +24,9 @@
 namespace goldfish {
 using ahs21::SensorType;
 using ahs10::SensorFlagBits;
-using ahs10::SensorStatus;
 using ahs10::MetaDataEventType;
 
-MultihalSensors::MultihalSensors()
-        : m_qemuSensorsFd(qemud_channel_open("sensors"))
-        , m_batchInfo(getSensorNumber()) {
+MultihalSensors::MultihalSensors() : m_qemuSensorsFd(qemud_channel_open("sensors")) {
     if (!m_qemuSensorsFd.ok()) {
         ALOGE("%s:%d: m_qemuSensorsFd is not opened", __func__, __LINE__);
         ::abort();
@@ -59,18 +56,13 @@ MultihalSensors::MultihalSensors()
         ::abort();
     }
     buffer[len] = 0;
-    uint32_t hostSensorsMask = 0;
-    if (sscanf(buffer, "%u", &hostSensorsMask) != 1) {
+    uint32_t availableSensorsMask = 0;
+    if (sscanf(buffer, "%u", &availableSensorsMask) != 1) {
         ALOGE("%s:%d: Can't parse qemud response", __func__, __LINE__);
         ::abort();
     }
-
-    m_availableSensorsMask = hostSensorsMask
-        & ~(1U << kSensorHandleGyroscopeFieldUncalibrated)
-        & ((1u << getSensorNumber()) - 1);
-
-    ALOGI("%s:%d: host sensors mask=%x, available sensors mask=%x",
-          __func__, __LINE__, hostSensorsMask, m_availableSensorsMask);
+    m_availableSensorsMask =
+        availableSensorsMask & ((1u << getSensorNumber()) - 1);
 
     if (!::android::base::Socketpair(AF_LOCAL, SOCK_STREAM, 0,
                                      &m_callersFd, &m_sensorThreadFd)) {
@@ -78,17 +70,11 @@ MultihalSensors::MultihalSensors()
         ::abort();
     }
 
-    m_sensorThread = std::thread(&MultihalSensors::qemuSensorListenerThread, this);
-    m_batchThread = std::thread(&MultihalSensors::batchThread, this);
+    m_sensorThread = std::thread(qemuSensorListenerThreadStart, this);
 }
 
 MultihalSensors::~MultihalSensors() {
-    setAllQemuSensors(false);
-
-    m_batchRunning = false;
-    m_batchUpdated.notify_one();
-    m_batchThread.join();
-
+    disableAllSensors();
     qemuSensorThreadSendCommand(kCMD_QUIT);
     m_sensorThread.join();
 }
@@ -118,7 +104,7 @@ Return<void> MultihalSensors::getSensorsList_2_1(getSensorsList_2_1_cb _hidl_cb)
 }
 
 Return<Result> MultihalSensors::setOperationMode(const OperationMode mode) {
-    std::unique_lock<std::mutex> lock(m_mtx);
+    std::unique_lock<std::mutex> lock(m_apiMtx);
 
     if (m_activeSensorsMask) {
         return Result::INVALID_OPERATION;
@@ -134,41 +120,25 @@ Return<Result> MultihalSensors::activate(const int32_t sensorHandle,
         return Result::BAD_VALUE;
     }
 
-    std::unique_lock<std::mutex> lock(m_mtx);
-    BatchInfo& batchInfo = m_batchInfo[sensorHandle];
+    std::unique_lock<std::mutex> lock(m_apiMtx);
 
+    uint32_t newActiveMask;
     if (enabled) {
-        const SensorInfo* sensor = getSensorInfoByHandle(sensorHandle);
-        LOG_ALWAYS_FATAL_IF(!sensor);
-        if (!(sensor->flags & static_cast<uint32_t>(SensorFlagBits::ON_CHANGE_MODE))) {
-            if (batchInfo.samplingPeriodNs <= 0) {
-                return Result::BAD_VALUE;
-            }
-
-            BatchEventRef batchEventRef;
-            batchEventRef.timestamp =
-                ::android::elapsedRealtimeNano() + batchInfo.samplingPeriodNs;
-            batchEventRef.sensorHandle = sensorHandle;
-            batchEventRef.generation = ++batchInfo.generation;
-
-            m_batchQueue.push(batchEventRef);
-            m_batchUpdated.notify_one();
-        } else if (sensor->type == SensorType::HEART_RATE){
-            // Heart rate sensor's first data after activation should be
-            // SENSOR_STATUS_UNRELIABLE.
-            Event event;
-            event.u.heartRate.status = SensorStatus::UNRELIABLE;
-            event.u.heartRate.bpm = 0;
-            event.timestamp = ::android::elapsedRealtimeNano();
-            event.sensorHandle = sensorHandle;
-            event.sensorType = SensorType::HEART_RATE;
-            doPostSensorEventLocked(*sensor, event);
-        }
-
-        m_activeSensorsMask = m_activeSensorsMask | (1u << sensorHandle);
+        newActiveMask = m_activeSensorsMask | (1u << sensorHandle);
     } else {
-        m_activeSensorsMask = m_activeSensorsMask & ~(1u << sensorHandle);
+        newActiveMask = m_activeSensorsMask & ~(1u << sensorHandle);
     }
+    if (m_activeSensorsMask == newActiveMask) {
+        return Result::OK;
+    }
+
+    if (m_opMode == OperationMode::NORMAL) {
+        if (!activateQemuSensorImpl(m_qemuSensorsFd.get(), sensorHandle, enabled)) {
+            return Result::INVALID_OPERATION;
+        }
+    }
+
+    m_activeSensorsMask = newActiveMask;
     return Result::OK;
 }
 
@@ -177,35 +147,26 @@ Return<Result> MultihalSensors::batch(const int32_t sensorHandle,
                                       const int64_t maxReportLatencyNs) {
     (void)maxReportLatencyNs;
 
-    if (!isSensorHandleValid(sensorHandle)) {
-        return Result::BAD_VALUE;
-    }
-
     const SensorInfo* sensor = getSensorInfoByHandle(sensorHandle);
-    LOG_ALWAYS_FATAL_IF(!sensor);
-
-    if (samplingPeriodNs < sensor->minDelay) {
+    if (sensor) {
+        if (samplingPeriodNs >= sensor->minDelay) {
+            return Result::OK;
+        } else {
+            return Result::BAD_VALUE;
+        }
+    } else {
         return Result::BAD_VALUE;
     }
-
-    std::unique_lock<std::mutex> lock(m_mtx);
-    if (m_opMode == OperationMode::NORMAL) {
-        m_batchInfo[sensorHandle].samplingPeriodNs = samplingPeriodNs;
-    }
-
-    return Result::OK;
 }
 
 Return<Result> MultihalSensors::flush(const int32_t sensorHandle) {
-    if (!isSensorHandleValid(sensorHandle)) {
+    const SensorInfo* sensor = getSensorInfoByHandle(sensorHandle);
+    if (!sensor) {
         return Result::BAD_VALUE;
     }
 
-    const SensorInfo* sensor = getSensorInfoByHandle(sensorHandle);
-    LOG_ALWAYS_FATAL_IF(!sensor);
-
-    std::unique_lock<std::mutex> lock(m_mtx);
-    if (!isSensorActive(sensorHandle)) {
+    std::unique_lock<std::mutex> lock(m_apiMtx);
+    if (!(m_activeSensorsMask & (1u << sensorHandle))) {
         return Result::BAD_VALUE;
     }
 
@@ -214,58 +175,48 @@ Return<Result> MultihalSensors::flush(const int32_t sensorHandle) {
     event.sensorType = SensorType::META_DATA;
     event.u.meta.what = MetaDataEventType::META_DATA_FLUSH_COMPLETE;
 
-    doPostSensorEventLocked(*sensor, event);
+    postSensorEventLocked(event);
     return Result::OK;
 }
 
 Return<Result> MultihalSensors::injectSensorData_2_1(const Event& event) {
-    if (!isSensorHandleValid(event.sensorHandle)) {
-        return Result::BAD_VALUE;
-    }
     if (event.sensorType == SensorType::ADDITIONAL_INFO) {
         return Result::OK;
     }
 
-    std::unique_lock<std::mutex> lock(m_mtx);
+    std::unique_lock<std::mutex> lock(m_apiMtx);
     if (m_opMode != OperationMode::DATA_INJECTION) {
         return Result::INVALID_OPERATION;
     }
     const SensorInfo* sensor = getSensorInfoByHandle(event.sensorHandle);
-    LOG_ALWAYS_FATAL_IF(!sensor);
+    if (!sensor) {
+        return Result::BAD_VALUE;
+    }
     if (sensor->type != event.sensorType) {
         return Result::BAD_VALUE;
     }
 
-    doPostSensorEventLocked(*sensor, event);
+    postSensorEventLocked(event);
     return Result::OK;
 }
 
 Return<Result> MultihalSensors::initialize(const sp<IHalProxyCallback>& halProxyCallback) {
-    std::unique_lock<std::mutex> lock(m_mtx);
-    setAllQemuSensors(true);   // we need to start sampling sensors for batching
+    std::unique_lock<std::mutex> lock(m_apiMtx);
+    disableAllSensors();
     m_opMode = OperationMode::NORMAL;
     m_halProxyCallback = halProxyCallback;
     return Result::OK;
 }
 
 void MultihalSensors::postSensorEvent(const Event& event) {
-    const SensorInfo* sensor = getSensorInfoByHandle(event.sensorHandle);
-    LOG_ALWAYS_FATAL_IF(!sensor);
-
-    std::unique_lock<std::mutex> lock(m_mtx);
-    if (sensor->flags & static_cast<uint32_t>(SensorFlagBits::ON_CHANGE_MODE)) {
-        if (isSensorActive(event.sensorHandle)) {
-            doPostSensorEventLocked(*sensor, event);
-        }
-    } else {    // CONTINUOUS_MODE
-        m_batchInfo[event.sensorHandle].event = event;
-    }
+    std::unique_lock<std::mutex> lock(m_apiMtx);
+    postSensorEventLocked(event);
 }
 
-void MultihalSensors::doPostSensorEventLocked(const SensorInfo& sensor,
-                                              const Event& event) {
+void MultihalSensors::postSensorEventLocked(const Event& event) {
     const bool isWakeupEvent =
-        sensor.flags & static_cast<uint32_t>(SensorFlagBits::WAKE_UP);
+        getSensorInfoByHandle(event.sensorHandle)->flags &
+        static_cast<uint32_t>(SensorFlagBits::WAKE_UP);
 
     m_halProxyCallback->postEvents(
         {event},
@@ -274,62 +225,6 @@ void MultihalSensors::doPostSensorEventLocked(const SensorInfo& sensor,
 
 bool MultihalSensors::qemuSensorThreadSendCommand(const char cmd) const {
     return TEMP_FAILURE_RETRY(write(m_callersFd.get(), &cmd, 1)) == 1;
-}
-
-bool MultihalSensors::isSensorHandleValid(int sensorHandle) const {
-    if (!goldfish::isSensorHandleValid(sensorHandle)) {
-        return false;
-    }
-
-    if (!(m_availableSensorsMask & (1u << sensorHandle))) {
-        return false;
-    }
-
-    return true;
-}
-
-void MultihalSensors::batchThread() {
-    while (m_batchRunning) {
-        std::unique_lock<std::mutex> lock(m_mtx);
-        if (m_batchQueue.empty()) {
-            m_batchUpdated.wait(lock);
-        } else {
-            const int64_t d =
-                m_batchQueue.top().timestamp - ::android::elapsedRealtimeNano();
-            m_batchUpdated.wait_for(lock, std::chrono::nanoseconds(d));
-        }
-
-        const int64_t nowNs = ::android::elapsedRealtimeNano();
-        while (!m_batchQueue.empty() && (nowNs >= m_batchQueue.top().timestamp)) {
-            BatchEventRef evRef = m_batchQueue.top();
-            m_batchQueue.pop();
-
-            const int sensorHandle = evRef.sensorHandle;
-            LOG_ALWAYS_FATAL_IF(!goldfish::isSensorHandleValid(sensorHandle));
-            if (!isSensorActive(sensorHandle)) {
-                continue;
-            }
-
-            BatchInfo &batchInfo = m_batchInfo[sensorHandle];
-            if (batchInfo.event.sensorType == SensorType::META_DATA) {
-                ALOGW("%s:%d the host has not provided value yet for sensorHandle=%d",
-                      __func__, __LINE__, sensorHandle);
-            } else {
-                batchInfo.event.timestamp = evRef.timestamp;
-                const SensorInfo* sensor = getSensorInfoByHandle(sensorHandle);
-                LOG_ALWAYS_FATAL_IF(!sensor);
-                doPostSensorEventLocked(*sensor, batchInfo.event);
-            }
-
-            if (evRef.generation == batchInfo.generation) {
-                const int64_t samplingPeriodNs = batchInfo.samplingPeriodNs;
-                LOG_ALWAYS_FATAL_IF(samplingPeriodNs <= 0);
-
-                evRef.timestamp += samplingPeriodNs;
-                m_batchQueue.push(evRef);
-            }
-        }
-    }
 }
 
 /// not supported //////////////////////////////////////////////////////////////

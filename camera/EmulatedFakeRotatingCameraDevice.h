@@ -31,13 +31,16 @@
 
 namespace android {
 
+class EmulatedFakeCamera;
+
 /* Encapsulates a fake camera device.
  * Fake camera device emulates a camera device by providing frames containing
  * an image rendered by opengl, that takes rotating input from host
  */
-class EmulatedFakeRotatingCameraDevice {
+class EmulatedFakeRotatingCameraDevice : public EmulatedCameraDevice {
 public:
-    explicit EmulatedFakeRotatingCameraDevice();
+    /* Constructs EmulatedFakeRotatingCameraDevice instance. */
+    explicit EmulatedFakeRotatingCameraDevice(EmulatedFakeCamera* camera_hal);
 
     /* Destructs EmulatedFakeRotatingCameraDevice instance. */
     ~EmulatedFakeRotatingCameraDevice();
@@ -68,50 +71,13 @@ public:
     status_t stopDevice();
 
 
+protected:
     /* Implementation of the frame production routine. */
-    bool produceFrame(void* buffer, int64_t* timestamp);
+    bool produceFrame(void* buffer, int64_t* timestamp) override;
 
     /****************************************************************************
      * Fake camera device private API
      ***************************************************************************/
-private:
-
-    enum EmulatedCameraDeviceState {
-        ECDS_INVALID,
-        /* Object has been constructed. */
-        ECDS_CONSTRUCTED,
-        /* Object has been initialized. */
-        ECDS_INITIALIZED,
-        /* Object has been connected to the physical device. */
-        ECDS_CONNECTED,
-        /* Camera device has been started. */
-        ECDS_STARTED,
-    };
-
-    /* Object state. */
-    EmulatedCameraDeviceState   mState;
-    
-    inline bool isInitialized() const {
-        return mState != ECDS_CONSTRUCTED;
-    }
-    inline bool isConnected() const {
-        /* Instance is connected when its status is either"connected", or
-         * "started". */
-        return mState == ECDS_CONNECTED || mState == ECDS_STARTED;
-    }
-    inline bool isStarted() const {
-        return mState == ECDS_STARTED;
-    }
-
-
-    Mutex                       mObjectLock;
-    /* Frame width */
-    int                         mFrameWidth;
-
-    /* Frame height */
-    int                         mFrameHeight;
-
-    uint32_t                    mPixelFormat;
 
 private:
 

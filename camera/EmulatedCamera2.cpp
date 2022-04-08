@@ -404,8 +404,7 @@ camera2_device_ops_t EmulatedCamera2::sDeviceOps = {
     EmulatedCamera2::trigger_action,
     EmulatedCamera2::set_notify_callback,
     EmulatedCamera2::get_metadata_vendor_tag_ops,
-    EmulatedCamera2::dump,
-    /* UNUSED: get_instance_metadata */ nullptr
+    EmulatedCamera2::dump
 };
 
 }; /* namespace android */

@@ -45,8 +45,6 @@ bool checkAudioConfig(bool isOut,
 
 TimeSpec nsecs2TimeSpec(nsecs_t);
 
-void setThreadPriority(int prio);
-
 }  // namespace util
 }  // namespace implementation
 }  // namespace V6_0

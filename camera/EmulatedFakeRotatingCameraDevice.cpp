@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <ui/DisplayInfo.h>
 #include <fcntl.h>
 
 #undef min
@@ -407,18 +408,13 @@ int EmulatedFakeRotatingCameraDevice::init_gl_surface(int width, int height)
     return 1;
 }
 
-EmulatedFakeRotatingCameraDevice::EmulatedFakeRotatingCameraDevice():
-    mObjectLock(),
-    mOpenglReady(false),
-    mState(ECDS_CONNECTED)
+EmulatedFakeRotatingCameraDevice::EmulatedFakeRotatingCameraDevice(EmulatedFakeCamera* camera_hal)
+    : EmulatedCameraDevice(camera_hal), mOpenglReady(false)
 {
-    // not much to initialize
-    mState = ECDS_INITIALIZED;
 }
 
 EmulatedFakeRotatingCameraDevice::~EmulatedFakeRotatingCameraDevice()
 {
-    mState = ECDS_INVALID;
 }
 
 /****************************************************************************
@@ -481,12 +477,13 @@ status_t EmulatedFakeRotatingCameraDevice::startDevice(int width,
         return EINVAL;
     }
 
-    mFrameWidth = width;
-    mFrameHeight = height;
-    mPixelFormat = pix_fmt;
+    /* Initialize the base class. */
+    const status_t res =
+        EmulatedCameraDevice::commonStartDevice(width, height, pix_fmt);
+
     mState = ECDS_STARTED;
 
-    return NO_ERROR;
+    return res;
 }
 
 status_t EmulatedFakeRotatingCameraDevice::stopDevice()
@@ -499,6 +496,7 @@ status_t EmulatedFakeRotatingCameraDevice::stopDevice()
         return NO_ERROR;
     }
 
+    EmulatedCameraDevice::commonStopDevice();
     mState = ECDS_CONNECTED;
 
     if (mOpenglReady) {
