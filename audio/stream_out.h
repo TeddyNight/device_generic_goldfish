@@ -16,8 +16,8 @@
 
 #pragma once
 #include <atomic>
-#include <android/hardware/audio/6.0/IStreamOut.h>
-#include <android/hardware/audio/6.0/IDevice.h>
+#include PATH(android/hardware/audio/FILE_VERSION/IStreamOut.h)
+#include PATH(android/hardware/audio/FILE_VERSION/IDevice.h)
 #include "stream_common.h"
 #include "io_thread.h"
 #include "primary_device.h"
@@ -25,7 +25,7 @@
 namespace android {
 namespace hardware {
 namespace audio {
-namespace V6_0 {
+namespace CPP_VERSION {
 namespace implementation {
 
 using ::android::sp;
@@ -33,15 +33,16 @@ using ::android::hardware::hidl_bitfield;
 using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
-using namespace ::android::hardware::audio::common::V6_0;
-using namespace ::android::hardware::audio::V6_0;
+using namespace ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION;
+using namespace ::android::hardware::audio::CORE_TYPES_CPP_VERSION;
+using ::android::hardware::audio::CPP_VERSION::IStreamOut;
 
 struct StreamOut : public IStreamOut {
-    StreamOut(sp<PrimaryDevice> dev,
+    StreamOut(sp<Device> dev,
               int32_t ioHandle,
               const DeviceAddress& device,
               const AudioConfig& config,
-              hidl_bitfield<AudioOutputFlag> flags,
+              hidl_vec<AudioInOutFlag> flags,
               const SourceMetadata& sourceMetadata);
     ~StreamOut();
 
@@ -49,16 +50,9 @@ struct StreamOut : public IStreamOut {
     Return<uint64_t> getFrameSize() override;
     Return<uint64_t> getFrameCount() override;
     Return<uint64_t> getBufferSize() override;
-    Return<uint32_t> getSampleRate() override;
-    Return<void> getSupportedSampleRates(AudioFormat format, getSupportedSampleRates_cb _hidl_cb) override;
-    Return<Result> setSampleRate(uint32_t sampleRateHz) override;
-    Return<hidl_bitfield<AudioChannelMask>> getChannelMask() override;
-    Return<void> getSupportedChannelMasks(AudioFormat format, getSupportedChannelMasks_cb _hidl_cb) override;
-    Return<Result> setChannelMask(hidl_bitfield<AudioChannelMask> mask) override;
-    Return<AudioFormat> getFormat() override;
-    Return<void> getSupportedFormats(getSupportedFormats_cb _hidl_cb) override;
-    Return<Result> setFormat(AudioFormat format) override;
+    Return<void> getSupportedProfiles(getSupportedProfiles_cb _hidl_cb) override;
     Return<void> getAudioProperties(getAudioProperties_cb _hidl_cb) override;
+    Return<Result> setAudioProperties(const AudioConfigBaseOptional& config) override;
     Return<Result> addEffect(uint64_t effectId) override;
     Return<Result> removeEffect(uint64_t effectId) override;
     Return<Result> standby() override;
@@ -79,7 +73,7 @@ struct StreamOut : public IStreamOut {
     // IStreamOut
     Return<uint32_t> getLatency() override;
     Return<Result> setVolume(float left, float right) override;
-    Return<void> updateSourceMetadata(const SourceMetadata& sourceMetadata) override;
+    Return<Result> updateSourceMetadata(const SourceMetadata& sourceMetadata) override;
     Return<void> prepareForWriting(uint32_t frameSize, uint32_t framesCount,
                                    prepareForWriting_cb _hidl_cb) override;
     Return<void> getRenderPosition(getRenderPosition_cb _hidl_cb) override;
@@ -101,20 +95,30 @@ struct StreamOut : public IStreamOut {
     Return<Result> setAudioDescriptionMixLevel(float leveldB) override;
     Return<void> getPlaybackRateParameters(getPlaybackRateParameters_cb _hidl_cb) override;
     Return<Result> setPlaybackRateParameters(const PlaybackRate &playbackRate) override;
+#if MAJOR_VERSION == 7 && MINOR_VERSION == 1
+    Return<Result> setLatencyMode(LatencyMode mode) override;
+    Return<void> getRecommendedLatencyModes(getRecommendedLatencyModes_cb _hidl_cb) override;
+    Return<Result> setLatencyModeCallback(
+            const sp<IStreamOutLatencyModeCallback>& callback) override;
+#endif
 
     void setMasterVolume(float volume);
     float getEffectiveVolume() const { return mEffectiveVolume; }
     const DeviceAddress &getDeviceAddress() const { return mCommon.m_device; }
     const AudioConfig &getAudioConfig() const { return mCommon.m_config; }
-    const hidl_bitfield<AudioOutputFlag> &getAudioOutputFlags() const { return mCommon.m_flags; }
+    const hidl_vec<AudioInOutFlag> &getAudioOutputFlags() const { return mCommon.m_flags; }
 
     uint64_t &getFrameCounter() { return mFrames; }
+
+    static bool validateDeviceAddress(const DeviceAddress& device);
+    static bool validateFlags(const hidl_vec<AudioInOutFlag>& flags);
+    static bool validateSourceMetadata(const SourceMetadata& sourceMetadata);
 
 private:
     Result closeImpl(bool fromDctor);
     void updateEffectiveVolumeLocked();
 
-    sp<PrimaryDevice> mDev;
+    sp<Device> mDev;
     const StreamCommon mCommon;
     const SourceMetadata mSourceMetadata;
     std::unique_ptr<IOThread> mWriteThread;
@@ -129,7 +133,7 @@ private:
 };
 
 }  // namespace implementation
-}  // namespace V6_0
+}  // namespace CPP_VERSION
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
