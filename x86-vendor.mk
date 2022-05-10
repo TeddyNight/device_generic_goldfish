@@ -19,13 +19,10 @@ PRODUCT_SDK_ADDON_COPY_FILES += \
     device/generic/goldfish/data/etc/encryptionkey.img:images/x86/encryptionkey.img \
     $(EMULATOR_KERNEL_FILE):images/x86/kernel-ranchu-64
 
-PRODUCT_PACKAGES += \
-    emulatorip
-
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.crypto.dm_default_key.options_format.version=2
 
-PRODUCT_SHIPPING_API_LEVEL := 31
+PRODUCT_SHIPPING_API_LEVEL := 33
 PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
 TARGET_USES_MKE2FS := true
 

@@ -22,7 +22,7 @@
 namespace android {
 namespace hardware {
 namespace audio {
-namespace V6_0 {
+namespace CPP_VERSION {
 namespace implementation {
 namespace talsa {
 
@@ -112,11 +112,10 @@ std::unique_ptr<pcm_t, PcmDeleter> pcmOpen(const unsigned int dev,
 
     pcm_config.channels = nChannels;
     pcm_config.rate = sampleRateHz;
-    pcm_config.period_size = frameCount;     // Approx frames between interrupts
-    pcm_config.period_count = 8;             // Approx interrupts per buffer
+    pcm_config.period_count = 8; // Approx interrupts per buffer
+    // Approx frames between interrupts
+    pcm_config.period_size = 2 * frameCount / pcm_config.period_count;
     pcm_config.format = PCM_FORMAT_S16_LE;
-    pcm_config.start_threshold = 0;
-    pcm_config.stop_threshold = isOut ? 0 : INT_MAX;
 
     PcmPtr pcm =
         PcmPtr(::pcm_open(dev, card,
@@ -143,7 +142,7 @@ Mixer::~Mixer() {
 
 }  // namespace talsa
 }  // namespace implementation
-}  // namespace V6_0
+}  // namespace CPP_VERSION
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android

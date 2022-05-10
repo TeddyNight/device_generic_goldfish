@@ -62,7 +62,7 @@
 
     <!-- basic system services -->
     <feature name="android.software.app_widgets" />
-    <feature name="android.software.connectionservice" />
+    <feature name="android.software.telecom" />
     <feature name="android.software.voice_recognizers" notLowRam="true" />
     <feature name="android.software.backup" />
     <feature name="android.software.home_screen" />
@@ -83,6 +83,8 @@
     <feature name="android.software.activities_on_secondary_displays" />
 
     <feature name="android.software.cts" />
+
+    <feature name="android.hardware.security.model.compatible" />
 
     <!-- Feature to specify if the device supports controls. -->
     <feature name="android.software.controls" />

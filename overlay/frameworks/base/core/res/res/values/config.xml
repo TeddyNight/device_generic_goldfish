@@ -54,13 +54,29 @@
         <item>0:2:15</item> <!-- ID0:Fingerprint:Strong -->
     </string-array>
 
+    <!-- Map of System DeviceState supplied by DeviceStateManager to WM Jetpack posture. -->
+    <string-array name="config_device_state_postures" translatable="false">
+        <item>1:1</item> <!-- CLOSED -->
+        <item>2:2</item> <!-- HALF_OPENED -->
+        <item>3:3</item> <!-- OPENED -->
+        <item>4:4</item> <!-- FLIPPED -->
+        <item>5:5</item> <!-- TENT -->
+    </string-array>
+
     <!-- The device states (supplied by DeviceStateManager) that should be treated as folded by the
          display fold controller. -->
     <integer-array name="config_foldedDeviceStates" translatable="false">
-      <item>0</item> <!-- CLOSED -->
+      <item>1</item> <!-- CLOSED -->
     </integer-array>
 
     <!-- This device is able to support the microphone and camera global toggles. -->
     <bool name="config_supportsMicToggle">true</bool>
     <bool name="config_supportsCamToggle">true</bool>
+    <!-- Specifies priority of automatic time sources. Suggestions from higher entries in the list
+         take precedence over lower ones.
+         See com.android.server.timedetector.TimeDetectorStrategy for available sources. -->
+    <string-array name="config_autoTimeSourcesPriority">
+        <item>telephony</item>
+        <item>network</item>
+    </string-array>
 </resources>
