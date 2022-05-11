@@ -40,16 +40,15 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/telephony_system_ext.mk)
 #
 $(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_product.mk)
 
+PRODUCT_SDK_ADDON_SYS_IMG_SOURCE_PROP := \
+    development/sys-img/images_arm64-v8a_source.prop_template
+
 #
 # All components inherited here go to vendor or vendor_boot image
 #
 $(call inherit-product, device/generic/goldfish/arm64-vendor.mk)
 $(call inherit-product, device/generic/goldfish/64bitonly/product/emulator64_vendor.mk)
 $(call inherit-product, device/generic/goldfish/emulator64_arm64/device.mk)
-
-# Define the host tools and libs that are parts of the SDK.
-$(call inherit-product-if-exists, sdk/build/product_sdk.mk)
-$(call inherit-product-if-exists, development/build/product_sdk.mk)
 
 # Overrides
 PRODUCT_BRAND := Android

@@ -32,14 +32,10 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/data/media/test/swirl_144x136_mpeg4.mp4:data/media/0/test/CtsMediaTestCases-1.4/swirl_144x136_mpeg4.mp4 \
     device/generic/goldfish/data/media/test/swirl_128x128_mpeg4.mp4:data/media/0/test/CtsMediaTestCases-1.4/swirl_128x128_mpeg4.mp4
 
-
-PRODUCT_PACKAGES += \
-    emulatorip
-
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.crypto.dm_default_key.options_format.version=2
 
-PRODUCT_SHIPPING_API_LEVEL := 31
+PRODUCT_SHIPPING_API_LEVEL := 33
 PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
 TARGET_USES_MKE2FS := true
 

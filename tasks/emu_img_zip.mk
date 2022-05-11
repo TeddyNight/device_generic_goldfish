@@ -4,6 +4,7 @@
 ifeq ($(filter $(TARGET_PRODUCT), qemu_trusty_arm64),)
 ifeq ($(filter $(MAKECMDGOALS), sdk win_sdk sdk_repo goog_emu_imgs),)
 emulator_img_source_prop := $(TARGET_OUT_INTERMEDIATES)/source.properties
+target_notice_file_txt := $(TARGET_OUT_INTERMEDIATES)/NOTICE.txt
 $(emulator_img_source_prop): $(PRODUCT_SDK_ADDON_SYS_IMG_SOURCE_PROP)
 	@echo Generate $@
 	$(hide) mkdir -p $(dir $@)
@@ -112,5 +113,18 @@ $(INTERNAL_EMULATOR_PACKAGE_TARGET): $(INTERNAL_EMULATOR_PACKAGE_FILES) $(FINAL_
 .PHONY: emu_img_zip
 emu_img_zip: $(INTERNAL_EMULATOR_PACKAGE_TARGET)
 
+INTERNAL_EMULATOR_KERNEL_TARGET := $(PRODUCT_OUT)/emu-gki-$(TARGET_KERNEL_USE)-$(FILE_NAME_TAG).zip
+INTERNAL_GKI_SOURCE := $(INTERNAL_EMULATOR_PACKAGE_SOURCE)/GKI-$(TARGET_KERNEL_USE)
+$(INTERNAL_EMULATOR_KERNEL_TARGET): $(INSTALLED_QEMU_RAMDISKIMAGE) $(EMULATOR_KERNEL_FILE)
+	@echo "Package: $@"
+	$(hide) mkdir -p $(INTERNAL_GKI_SOURCE)
+	$(hide) ($(ACP) $(EMULATOR_KERNEL_FILE) $(INTERNAL_GKI_SOURCE)/${EMULATOR_KERNEL_DIST_NAME})
+	$(hide) ($(ACP) $(INSTALLED_QEMU_RAMDISKIMAGE) $(INTERNAL_GKI_SOURCE)/ramdisk.img)
+	$(hide) $(SOONG_ZIP) -o $@ -C $(INTERNAL_GKI_SOURCE) -D $(INTERNAL_GKI_SOURCE)
+
+.PHONY: emu_kernel_zip
+emu_kernel_zip: $(INTERNAL_EMULATOR_KERNEL_TARGET)
+
+$(call dist-for-goals, emu_kernel_zip, $(INTERNAL_EMULATOR_KERNEL_TARGET))
 endif
 endif
