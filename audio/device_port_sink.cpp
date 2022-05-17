@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+#include PATH(APM_XSD_ENUMS_H_FILENAME)
+#include <android-base/properties.h>
 #include <chrono>
 #include <thread>
 #include <log/log.h>
+#include <utils/Mutex.h>
 #include <utils/Timers.h>
 #include <utils/ThreadDefs.h>
 #include "device_port_sink.h"
@@ -26,10 +29,16 @@
 #include "util.h"
 #include "debug.h"
 
+using ::android::base::GetBoolProperty;
+
+namespace xsd {
+using namespace ::android::audio::policy::configuration::CPP_VERSION;
+}
+
 namespace android {
 namespace hardware {
 namespace audio {
-namespace V6_0 {
+namespace CPP_VERSION {
 namespace implementation {
 
 namespace {
@@ -41,17 +50,19 @@ struct TinyalsaSink : public DevicePortSink {
                  const AudioConfig &cfg,
                  uint64_t &frames)
             : mStartNs(systemTime(SYSTEM_TIME_MONOTONIC))
-            , mSampleRateHz(cfg.sampleRateHz)
-            , mFrameSize(util::countChannels(cfg.channelMask) * sizeof(int16_t))
+            , mSampleRateHz(cfg.base.sampleRateHz)
+            , mFrameSize(util::countChannels(cfg.base.channelMask) * sizeof(int16_t))
             , mWriteSizeFrames(cfg.frameCount)
+            , mInitialFrames(frames)
             , mFrames(frames)
             , mRingBuffer(mFrameSize * cfg.frameCount * 3)
             , mMixer(pcmCard)
             , mPcm(talsa::pcmOpen(pcmCard, pcmDevice,
-                                  util::countChannels(cfg.channelMask),
-                                  cfg.sampleRateHz,
+                                  util::countChannels(cfg.base.channelMask),
+                                  cfg.base.sampleRateHz,
                                   cfg.frameCount,
                                   true /* isOut */)) {
+        LOG_ALWAYS_FATAL_IF(::pcm_prepare(mPcm.get()));
         mConsumeThread = std::thread(&TinyalsaSink::consumeThread, this);
     }
 
@@ -60,38 +71,60 @@ struct TinyalsaSink : public DevicePortSink {
         mConsumeThread.join();
     }
 
+    Result start() override {
+        return ::pcm_start(mPcm.get()) ? FAILURE(Result::INVALID_STATE) : Result::OK;
+    }
+
+    Result stop() override {
+        return ::pcm_stop(mPcm.get()) ? FAILURE(Result::INVALID_STATE) : Result::OK;
+    }
+
     Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) override {
-        const nsecs_t nowNs = systemTime(SYSTEM_TIME_MONOTONIC);
-        const uint64_t nowFrames = getPresentationFrames(nowNs);
-        mFrames += (nowFrames - mPreviousFrames);
-        mPreviousFrames = nowFrames;
+        const AutoMutex lock(mFrameCountersMutex);
+
+        nsecs_t nowNs = systemTime(SYSTEM_TIME_MONOTONIC);
+        const uint64_t nowFrames = getPresentationFramesLocked(nowNs);
+        auto presentedFrames = nowFrames - mMissedFrames;
+        if (presentedFrames > mReceivedFrames) {
+          // There is another underrun that is not yet accounted for in mMissedFrames
+          auto delta = presentedFrames - mReceivedFrames;
+          presentedFrames -= delta;
+          // The last frame was presented some time ago, reflect that in the result
+          nowNs -= delta * 1000000000 / mSampleRateHz;
+        }
+        mFrames = presentedFrames + mInitialFrames;
 
         frames = mFrames;
         ts = util::nsecs2TimeSpec(nowNs);
         return Result::OK;
     }
 
-    uint64_t getPresentationFrames(const nsecs_t nowNs) const {
+    uint64_t getPresentationFramesLocked(const nsecs_t nowNs) const {
         return uint64_t(mSampleRateHz) * ns2us(nowNs - mStartNs) / 1000000;
     }
 
-    uint64_t getAvailableFrames(const nsecs_t nowNs) const {
-        return getPresentationFrames(nowNs) - mReceivedFrames;
+    size_t calcAvailableFramesNowLocked() {
+        const nsecs_t nowNs = systemTime(SYSTEM_TIME_MONOTONIC);
+        auto presentationFrames = getPresentationFramesLocked(nowNs);
+        if (mReceivedFrames + mMissedFrames < presentationFrames) {
+            // There has been an underrun
+            mMissedFrames = presentationFrames - mReceivedFrames;
+        }
+        size_t pendingFrames = mReceivedFrames + mMissedFrames - presentationFrames;
+        return mRingBuffer.capacity() / mFrameSize - pendingFrames;
     }
 
-    uint64_t getAvailableFramesNow() const {
-        return getAvailableFrames(systemTime(SYSTEM_TIME_MONOTONIC));
-    }
-
-    size_t getWaitFramesNow(const size_t requestedFrames) const {
-        const size_t availableFrames = getAvailableFramesNow();
+    size_t calcWaitFramesNowLocked(const size_t requestedFrames) {
+        const size_t availableFrames = calcAvailableFramesNowLocked();
         return (requestedFrames > availableFrames)
             ? (requestedFrames - availableFrames) : 0;
     }
 
     size_t write(float volume, size_t bytesToWrite, IReader &reader) {
+        const AutoMutex lock(mFrameCountersMutex);
+
         size_t framesLost = 0;
-        const size_t waitFrames = getWaitFramesNow(bytesToWrite / mFrameSize);
+        const size_t waitFrames = calcWaitFramesNowLocked(bytesToWrite / mFrameSize);
         const auto blockUntil =
             std::chrono::high_resolution_clock::now() +
                 + std::chrono::microseconds(waitFrames * 1000000 / mSampleRateHz);
@@ -199,37 +232,86 @@ private:
     const unsigned mSampleRateHz;
     const unsigned mFrameSize;
     const unsigned mWriteSizeFrames;
-    uint64_t &mFrames;
-    uint64_t mPreviousFrames = 0;
-    uint64_t mReceivedFrames = 0;
+    const uint64_t mInitialFrames;
+    uint64_t &mFrames GUARDED_BY(mFrameCountersMutex);
+    uint64_t mMissedFrames GUARDED_BY(mFrameCountersMutex) = 0;
+    uint64_t mReceivedFrames GUARDED_BY(mFrameCountersMutex) = 0;
     RingBuffer mRingBuffer;
     talsa::Mixer mMixer;
     talsa::PcmPtr mPcm;
     std::thread mConsumeThread;
     std::atomic<bool> mConsumeThreadRunning = true;
+    mutable Mutex mFrameCountersMutex;
 };
 
 struct NullSink : public DevicePortSink {
     NullSink(const AudioConfig &cfg, uint64_t &frames)
-            : mFrames(frames)
-            , mSampleRateHz(cfg.sampleRateHz)
-            , mNChannels(util::countChannels(cfg.channelMask))
-            , mTimestamp(systemTime(SYSTEM_TIME_MONOTONIC)) {}
+            : mStartNs(systemTime(SYSTEM_TIME_MONOTONIC))
+            , mSampleRateHz(cfg.base.sampleRateHz)
+            , mFrameSize(util::countChannels(cfg.base.channelMask) * sizeof(int16_t))
+            , mInitialFrames(frames)
+            , mFrames(frames) {}
+
+    Result start() override { return Result::OK; }
+    Result stop() override { return Result::OK; }
 
     Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) override {
-        simulatePresentationPosition();
+        const AutoMutex lock(mFrameCountersMutex);
+
+        nsecs_t nowNs = systemTime(SYSTEM_TIME_MONOTONIC);
+        const uint64_t nowFrames = getPresentationFramesLocked(nowNs);
+        auto presentedFrames = nowFrames - mMissedFrames;
+        if (presentedFrames > mReceivedFrames) {
+          // There is another underrun that is not yet accounted for in mMissedFrames
+          auto delta = presentedFrames - mReceivedFrames;
+          presentedFrames -= delta;
+          // The last frame was presented some time ago, reflect that in the result
+          nowNs -= delta * 1000000000 / mSampleRateHz;
+        }
+        mFrames = presentedFrames + mInitialFrames;
+
         frames = mFrames;
-        ts = util::nsecs2TimeSpec(mTimestamp);
+        ts = util::nsecs2TimeSpec(nowNs);
         return Result::OK;
+    }
+
+    uint64_t getPresentationFramesLocked(const nsecs_t nowNs) const {
+        return uint64_t(mSampleRateHz) * ns2us(nowNs - mStartNs) / 1000000;
+    }
+
+    size_t calcAvailableFramesNowLocked() {
+        const nsecs_t nowNs = systemTime(SYSTEM_TIME_MONOTONIC);
+        auto presentationFrames = getPresentationFramesLocked(nowNs);
+        if (mReceivedFrames + mMissedFrames < presentationFrames) {
+            // There has been an underrun
+            mMissedFrames = presentationFrames - mReceivedFrames;
+        }
+        size_t pendingFrames = mReceivedFrames + mMissedFrames - presentationFrames;
+        return sizeof(mWriteBuffer) / mFrameSize - pendingFrames;
+    }
+
+    size_t calcWaitFramesNowLocked(const size_t requestedFrames) {
+        const size_t availableFrames = calcAvailableFramesNowLocked();
+        return (requestedFrames > availableFrames)
+            ? (requestedFrames - availableFrames) : 0;
     }
 
     size_t write(float volume, size_t bytesToWrite, IReader &reader) override {
         (void)volume;
+        const AutoMutex lock(mFrameCountersMutex);
+
+        const size_t waitFrames = calcWaitFramesNowLocked(bytesToWrite / mFrameSize);
+        const auto blockUntil =
+            std::chrono::high_resolution_clock::now() +
+                + std::chrono::microseconds(waitFrames * 1000000 / mSampleRateHz);
+        std::this_thread::sleep_until(blockUntil);
 
         while (bytesToWrite > 0) {
-            size_t chunkSize = std::min(bytesToWrite, sizeof(mWriteBuffer));
+            size_t chunkSize =
+                std::min(bytesToWrite, sizeof(mWriteBuffer)) / mFrameSize * mFrameSize;
             chunkSize = reader(mWriteBuffer, chunkSize);
             if (chunkSize > 0) {
+                mReceivedFrames += chunkSize / mFrameSize;
                 bytesToWrite -= chunkSize;
             } else {
                 break; // reader failed
@@ -237,21 +319,6 @@ struct NullSink : public DevicePortSink {
         }
 
         return 0;
-    }
-
-    void simulatePresentationPosition() {
-        const nsecs_t nowNs = systemTime(SYSTEM_TIME_MONOTONIC);
-        const nsecs_t deltaNs = nowNs - mTimestamp;
-        const uint64_t deltaFrames = uint64_t(mSampleRateHz) * ns2ms(deltaNs) / 1000;
-        const uint64_t f = std::min(deltaFrames, mAvailableFrames);
-
-        mFrames += f;
-        mAvailableFrames -= f;
-        if (mAvailableFrames) {
-            mTimestamp += us2ns(f * 1000000 / mSampleRateHz);
-        } else {
-            mTimestamp = nowNs;
-        }
     }
 
     static std::unique_ptr<NullSink> create(const AudioConfig &cfg,
@@ -262,12 +329,15 @@ struct NullSink : public DevicePortSink {
     }
 
 private:
-    uint64_t &mFrames;
+    const nsecs_t mStartNs;
     const unsigned mSampleRateHz;
-    const unsigned mNChannels;
-    uint64_t mAvailableFrames = 0;
-    nsecs_t mTimestamp;
+    const unsigned mFrameSize;
+    const uint64_t mInitialFrames;
+    uint64_t &mFrames GUARDED_BY(mFrameCountersMutex);
+    uint64_t mMissedFrames GUARDED_BY(mFrameCountersMutex) = 0;
+    uint64_t mReceivedFrames GUARDED_BY(mFrameCountersMutex) = 0;
     char mWriteBuffer[1024];
+    mutable Mutex mFrameCountersMutex;
 };
 
 }  // namespace
@@ -276,38 +346,66 @@ std::unique_ptr<DevicePortSink>
 DevicePortSink::create(size_t readerBufferSizeHint,
                        const DeviceAddress &address,
                        const AudioConfig &cfg,
-                       const hidl_bitfield<AudioOutputFlag> &flags,
+                       const hidl_vec<AudioInOutFlag> &flags,
                        uint64_t &frames) {
     (void)flags;
 
-    if (cfg.format != AudioFormat::PCM_16_BIT) {
-        ALOGE("%s:%d Only PCM_16_BIT is supported", __func__, __LINE__);
+    if (xsd::stringToAudioFormat(cfg.base.format) != xsd::AudioFormat::AUDIO_FORMAT_PCM_16_BIT) {
+        ALOGE("%s:%d, unexpected format: '%s'", __func__, __LINE__, cfg.base.format.c_str());
         return FAILURE(nullptr);
     }
 
-    switch (address.device) {
-    case AudioDevice::OUT_SPEAKER:
+    if (GetBoolProperty("ro.boot.audio.tinyalsa.ignore_output", false)) {
+        goto nullsink;
+    }
+
+    switch (xsd::stringToAudioDevice(address.deviceType)) {
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_DEFAULT:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_SPEAKER:
         {
-            auto sinkptr = TinyalsaSink::create(talsa::kPcmCard, talsa::kPcmDevice, cfg, readerBufferSizeHint, frames);
-            if (sinkptr == nullptr) {
-                ALOGW("%s:%d failed to create alsa sink; created nullsink instead.", __func__, __LINE__);
-                return NullSink::create(cfg, readerBufferSizeHint, frames);
-            } else {
+            auto sinkptr = TinyalsaSink::create(talsa::kPcmCard, talsa::kPcmDevice,
+                                                cfg, readerBufferSizeHint, frames);
+            if (sinkptr != nullptr) {
                 return sinkptr;
+            } else {
+                ALOGW("%s:%d failed to create alsa sink for '%s'; creating NullSink instead.",
+                      __func__, __LINE__, address.deviceType.c_str());
             }
         }
+        break;
 
-    case AudioDevice::OUT_TELEPHONY_TX:
-        return NullSink::create(cfg, readerBufferSizeHint, frames);
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_TELEPHONY_TX:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_BUS:
+        ALOGW("%s:%d creating NullSink for '%s'.", __func__, __LINE__, address.deviceType.c_str());
+        break;
 
     default:
-        ALOGW("%s:%d unsupported device: %x created nullsink", __func__, __LINE__, address.device);
-        return NullSink::create(cfg, readerBufferSizeHint, frames);
+        ALOGW("%s:%d unsupported device: '%s', creating NullSink", __func__, __LINE__, address.deviceType.c_str());
+        break;
     }
+
+nullsink:
+    return NullSink::create(cfg, readerBufferSizeHint, frames);
+}
+
+bool DevicePortSink::validateDeviceAddress(const DeviceAddress& address) {
+    switch (xsd::stringToAudioDevice(address.deviceType)) {
+    default:
+        ALOGW("%s:%d unsupported device: '%s'", __func__, __LINE__, address.deviceType.c_str());
+        return FAILURE(false);
+
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_DEFAULT:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_SPEAKER:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_TELEPHONY_TX:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_BUS:
+        break;
+    }
+
+    return true;
 }
 
 }  // namespace implementation
-}  // namespace V6_0
+}  // namespace CPP_VERSION
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
