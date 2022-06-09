@@ -25,3 +25,5 @@ DeviceSkinOverlay = on
 VulkanQueueSubmitWithCommands = on
 VulkanBatchedDescriptorSetUpdate = on
 DeviceStateOnBoot = on
+VirtioSndCard = on
+Minigbm = on

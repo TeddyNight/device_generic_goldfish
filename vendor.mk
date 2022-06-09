@@ -46,8 +46,8 @@ PRODUCT_PACKAGES += \
     qemu-props \
     stagefright \
     android.hardware.graphics.composer@2.4-service \
-    android.hardware.graphics.allocator@3.0-service \
-    android.hardware.graphics.mapper@3.0-impl-ranchu \
+    android.hardware.graphics.allocator@4.0-service.minigbm \
+    android.hardware.graphics.mapper@4.0-impl.minigbm \
     hwcomposer.ranchu \
     toybox_vendor \
     android.hardware.wifi@1.0-service \
@@ -55,6 +55,7 @@ PRODUCT_PACKAGES += \
     libcodec2_goldfish_vp8dec \
     libcodec2_goldfish_vp9dec \
     libcodec2_goldfish_avcdec \
+    libcodec2_goldfish_hevcdec \
     sh_vendor \
     local_time.default \
     SdkSetup \
@@ -326,8 +327,8 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.vulkan.level-1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.level.xml \
     frameworks/native/data/etc/android.hardware.vulkan.compute-0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.compute.xml \
     frameworks/native/data/etc/android.hardware.vulkan.version-1_1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.version.xml \
-    frameworks/native/data/etc/android.software.vulkan.deqp.level-2021-03-01.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.vulkan.deqp.level.xml \
-    frameworks/native/data/etc/android.software.opengles.deqp.level-2021-03-01.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.opengles.deqp.level.xml \
+    frameworks/native/data/etc/android.software.vulkan.deqp.level-2022-03-01.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.vulkan.deqp.level.xml \
+    frameworks/native/data/etc/android.software.opengles.deqp.level-2022-03-01.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.opengles.deqp.level.xml \
     frameworks/native/data/etc/android.software.autofill.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.autofill.xml \
     frameworks/native/data/etc/android.software.verified_boot.xml:${TARGET_COPY_OUT_PRODUCT}/etc/permissions/android.software.verified_boot.xml \
     device/generic/goldfish/data/etc/permissions/privapp-permissions-goldfish.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-goldfish.xml \
