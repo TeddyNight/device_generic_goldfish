@@ -25,7 +25,7 @@
 namespace android {
 namespace hardware {
 namespace audio {
-namespace CPP_VERSION {
+namespace V6_0 {
 namespace implementation {
 
 // A one-producer-one-consumer ring buffer.
@@ -96,7 +96,7 @@ private:
 };
 
 }  // namespace implementation
-}  // namespace CPP_VERSION
+}  // namespace V6_0
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android

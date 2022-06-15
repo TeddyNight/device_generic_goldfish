@@ -26,7 +26,6 @@ PRODUCT_PACKAGES += \
     com.android.adbd \
     com.android.conscrypt \
     debuggerd \
-    gsid \
     hwservicemanager \
     init.environ.rc \
     init_system \
@@ -41,7 +40,6 @@ PRODUCT_PACKAGES += \
     logcat \
     logd \
     odsign \
-    remount \
     run-as \
     selinux_policy_system \
     servicemanager \
@@ -56,7 +54,7 @@ PRODUCT_COPY_FILES += \
     system/core/rootdir/init.usb.rc:system/etc/init/hw/init.usb.rc \
     system/core/rootdir/init.usb.configfs.rc:system/etc/init/hw/init.usb.configfs.rc \
     system/core/rootdir/etc/hosts:system/etc/hosts \
-    art/tools/public.libraries.buildbot.txt:system/etc/public.libraries.txt
+    system/core/rootdir/etc/public.libraries.android.txt:/system/etc/public.libraries.txt
 
 PRODUCT_SYSTEM_PROPERTIES += debug.atrace.tags.enableflags=0
 

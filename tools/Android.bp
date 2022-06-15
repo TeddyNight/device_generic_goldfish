@@ -29,8 +29,12 @@ python_binary_host {
     srcs: ["mk_combined_img.py"],
     main: "mk_combined_img.py",
     version: {
-        py3: {
+        py2: {
+            enabled: true,
             embedded_launcher: true,
+        },
+        py3: {
+            enabled: false,
         },
     },
 }

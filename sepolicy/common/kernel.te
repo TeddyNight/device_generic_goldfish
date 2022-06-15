@@ -1,4 +1,0 @@
-# LTP fallocate05 needs the following to pass the test.
-userdebug_or_eng(`
-  allow kernel shell_data_file:file { read write };
-')

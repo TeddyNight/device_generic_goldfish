@@ -16,38 +16,32 @@
 
 #pragma once
 #include <array>
-#include PATH(android/hardware/audio/common/COMMON_TYPES_FILE_VERSION/types.h)
-#include PATH(android/hardware/audio/CORE_TYPES_FILE_VERSION/types.h)
+#include <android/hardware/audio/common/6.0/types.h>
+#include <android/hardware/audio/6.0/types.h>
 #include <utils/Timers.h>
 
 namespace android {
 namespace hardware {
 namespace audio {
-namespace CPP_VERSION {
+namespace V6_0 {
 namespace implementation {
 namespace util {
 
 using ::android::hardware::hidl_bitfield;
-using ::android::hardware::hidl_string;
-using ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION::AudioFormat;
-using ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION::AudioChannelMask;
-using ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION::AudioConfig;
-using ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION::AudioPortConfig;
-using ::android::hardware::audio::CORE_TYPES_CPP_VERSION::MicrophoneInfo;
-using ::android::hardware::audio::CORE_TYPES_CPP_VERSION::TimeSpec;
+using ::android::hardware::audio::common::V6_0::AudioFormat;
+using ::android::hardware::audio::common::V6_0::AudioChannelMask;
+using ::android::hardware::audio::common::V6_0::AudioConfig;
+using ::android::hardware::audio::V6_0::MicrophoneInfo;
 
 MicrophoneInfo getMicrophoneInfo();
 
-size_t countChannels(const AudioChannelMask &mask);
-size_t getBytesPerSample(const AudioFormat &format);
+size_t countChannels(hidl_bitfield<AudioChannelMask>);
+size_t getBytesPerSample(AudioFormat);
 
-bool checkAudioConfig(const AudioConfig &cfg);
 bool checkAudioConfig(bool isOut,
                       size_t duration_ms,
                       const AudioConfig &cfg,
                       AudioConfig &suggested);
-
-bool checkAudioPortConfig(const AudioPortConfig& cfg);
 
 TimeSpec nsecs2TimeSpec(nsecs_t);
 
@@ -55,7 +49,7 @@ void setThreadPriority(int prio);
 
 }  // namespace util
 }  // namespace implementation
-}  // namespace CPP_VERSION
+}  // namespace V6_0
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android

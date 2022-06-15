@@ -16,28 +16,25 @@
 
 #pragma once
 #include <memory>
-#include PATH(android/hardware/audio/FILE_VERSION/IDevicesFactory.h)
+#include <android/hardware/audio/6.0/IDevicesFactory.h>
 #include <dlfcn.h>
 
 namespace android {
 namespace hardware {
 namespace audio {
-namespace CPP_VERSION {
+namespace V6_0 {
 namespace implementation {
 
+using ::android::sp;
 using ::android::hardware::hidl_string;
 using ::android::hardware::Return;
-using namespace ::android::hardware::audio::CPP_VERSION;
+using namespace ::android::hardware::audio::V6_0;
 
 struct DevicesFactory : public IDevicesFactory {
     DevicesFactory();
 
     Return<void> openDevice(const hidl_string& device, openDevice_cb _hidl_cb) override;
     Return<void> openPrimaryDevice(openPrimaryDevice_cb _hidl_cb) override;
-#if MAJOR_VERSION == 7 && MINOR_VERSION == 1
-    Return<void> openDevice_7_1(const hidl_string& device, openDevice_7_1_cb _hidl_cb) override;
-    Return<void> openPrimaryDevice_7_1(openPrimaryDevice_7_1_cb _hidl_cb) override;
-#endif
 
 private:
     struct DLDeleter {
@@ -51,7 +48,7 @@ private:
 };
 
 }  // namespace implementation
-}  // namespace CPP_VERSION
+}  // namespace V6_0
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android

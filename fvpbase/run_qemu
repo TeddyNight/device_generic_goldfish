@@ -31,7 +31,7 @@
   -device virtio-gpu-pci \
   -smp 8 \
   -usb \
-  -device qemu-xhci \
+  -device usb-ehci \
   -device usb-kbd \
   -device usb-mouse \
   -serial mon:stdio \

@@ -32,7 +32,6 @@ namespace ahs10 = ahs::V1_0;
 using ahs21::implementation::IHalProxyCallback;
 using ahs21::SensorInfo;
 using ahs21::Event;
-using ahs10::AdditionalInfo;
 using ahs10::OperationMode;
 using ahs10::RateLevel;
 using ahs10::Result;
@@ -86,7 +85,6 @@ private:
         float lastHingeAngle1Value = kSensorNoValue;
         float lastHingeAngle2Value = kSensorNoValue;
         float lastHeartRateValue = kSensorNoValue;
-        float lastWristTiltMeasurement = -1;
     };
 
     bool isSensorHandleValid(int sensorHandle) const;
@@ -98,8 +96,6 @@ private:
     void parseQemuSensorEvent(const int pipe, QemuSensorsProtocolState* state);
     void postSensorEvent(const Event& event);
     void doPostSensorEventLocked(const SensorInfo& sensor, const Event& event);
-    void setAdditionalInfoFrames();
-    void sendAdditionalInfoReport(int sensorHandle);
 
     void qemuSensorListenerThread();
     void batchThread();
@@ -119,8 +115,6 @@ private:
     uint32_t                m_activeSensorsMask = 0;
     OperationMode           m_opMode = OperationMode::NORMAL;
     sp<IHalProxyCallback>   m_halProxyCallback;
-
-    std::vector<AdditionalInfo> mAdditionalInfoFrames;
 
     // batching
     struct BatchEventRef {
