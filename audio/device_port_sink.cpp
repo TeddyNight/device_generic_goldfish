@@ -62,21 +62,17 @@ struct TinyalsaSink : public DevicePortSink {
                                   cfg.base.sampleRateHz,
                                   cfg.frameCount,
                                   true /* isOut */)) {
-        LOG_ALWAYS_FATAL_IF(::pcm_prepare(mPcm.get()));
-        mConsumeThread = std::thread(&TinyalsaSink::consumeThread, this);
+        if (mPcm) {
+            LOG_ALWAYS_FATAL_IF(!talsa::pcmPrepare(mPcm.get()));
+            mConsumeThread = std::thread(&TinyalsaSink::consumeThread, this);
+        } else {
+            mConsumeThread = std::thread([](){});
+        }
     }
 
     ~TinyalsaSink() {
         mConsumeThreadRunning = false;
         mConsumeThread.join();
-    }
-
-    Result start() override {
-        return ::pcm_start(mPcm.get()) ? FAILURE(Result::INVALID_STATE) : Result::OK;
-    }
-
-    Result stop() override {
-        return ::pcm_stop(mPcm.get()) ? FAILURE(Result::INVALID_STATE) : Result::OK;
     }
 
     Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) override {
@@ -203,11 +199,7 @@ struct TinyalsaSink : public DevicePortSink {
                     LOG_ALWAYS_FATAL_IF(mRingBuffer.consume(chunk, szBytes) < szBytes);
                 }
 
-                int res = ::pcm_write(mPcm.get(), writeBuffer.data(), szBytes);
-                if (res < 0) {
-                    ALOGW("TinyalsaSink::%s:%d pcm_write failed with res=%d",
-                          __func__, __LINE__, res);
-                }
+                talsa::pcmWrite(mPcm.get(), writeBuffer.data(), szBytes);
             }
         }
     }
@@ -251,9 +243,6 @@ struct NullSink : public DevicePortSink {
             , mFrameSize(util::countChannels(cfg.base.channelMask) * sizeof(int16_t))
             , mInitialFrames(frames)
             , mFrames(frames) {}
-
-    Result start() override { return Result::OK; }
-    Result stop() override { return Result::OK; }
 
     Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) override {
         const AutoMutex lock(mFrameCountersMutex);
