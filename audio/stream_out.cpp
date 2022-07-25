@@ -80,13 +80,6 @@ struct WriteThread : public IOThread {
             mEfGroup.reset(rawEfGroup);
         }
 
-        mSink = DevicePortSink::create(mDataMQ.getQuantumCount(),
-                                       stream->getDeviceAddress(),
-                                       stream->getAudioConfig(),
-                                       stream->getAudioOutputFlags(),
-                                       stream->getFrameCounter());
-        LOG_ALWAYS_FATAL_IF(!mSink);
-
         mThread = std::thread(&WriteThread::threadLoop, this);
     }
 
@@ -109,13 +102,6 @@ struct WriteThread : public IOThread {
         return mTid.get_future();
     }
 
-    Result start() {
-        return mSink->start();
-    }
-
-    Result stop() {
-        return mSink->stop();
-    }
 
     void threadLoop() {
         util::setThreadPriority(PRIORITY_URGENT_AUDIO);
@@ -130,11 +116,19 @@ struct WriteThread : public IOThread {
             }
 
             if (efState & STAND_BY_REQUEST) {
-                mSink->stop();
+                mSink.reset();
             }
 
             if (efState & (MessageQueueFlagBits::NOT_EMPTY | 0)) {
-                mSink->start();
+                if (!mSink) {
+                    mSink = DevicePortSink::create(mDataMQ.getQuantumCount(),
+                                                   mStream->getDeviceAddress(),
+                                                   mStream->getAudioConfig(),
+                                                   mStream->getAudioOutputFlags(),
+                                                   mStream->getFrameCounter());
+                    LOG_ALWAYS_FATAL_IF(!mSink);
+                }
+
                 processCommand();
             }
         }
@@ -218,8 +212,16 @@ struct WriteThread : public IOThread {
     IStreamOut::WriteStatus doGetLatency() {
         IStreamOut::WriteStatus status;
 
-        status.retval = Result::OK;
-        status.reply.latencyMs = mStream->getLatency();
+        const int latencyMs =
+            DevicePortSink::getLatencyMs(mStream->getDeviceAddress(),
+                                         mStream->getAudioConfig());
+
+        if (latencyMs >= 0) {
+            status.retval = Result::OK;
+            status.reply.latencyMs = latencyMs;
+        } else {
+            status.retval = Result::INVALID_STATE;
+        }
 
         return status;
     }
@@ -344,15 +346,11 @@ Return<Result> StreamOut::close() {
 }
 
 Return<Result> StreamOut::start() {
-    return mWriteThread
-        ? static_cast<WriteThread*>(mWriteThread.get())->start()
-        : FAILURE(Result::INVALID_STATE);
+    return FAILURE(Result::NOT_SUPPORTED);
 }
 
 Return<Result> StreamOut::stop() {
-    return mWriteThread
-        ? static_cast<WriteThread*>(mWriteThread.get())->stop()
-        : FAILURE(Result::INVALID_STATE);
+    return FAILURE(Result::NOT_SUPPORTED);
 }
 
 Return<void> StreamOut::createMmapBuffer(int32_t minSizeFrames,
@@ -368,7 +366,10 @@ Return<void> StreamOut::getMmapPosition(getMmapPosition_cb _hidl_cb) {
 }
 
 Return<uint32_t> StreamOut::getLatency() {
-    return mCommon.getFrameCount() * 1000 / mCommon.getSampleRate();
+    const int latencyMs = DevicePortSink::getLatencyMs(getDeviceAddress(), getAudioConfig());
+
+    return (latencyMs >= 0) ? latencyMs :
+        (mCommon.getFrameCount() * 1000 / mCommon.getSampleRate());
 }
 
 Return<Result> StreamOut::setVolume(float left, float right) {
