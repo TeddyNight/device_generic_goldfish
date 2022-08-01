@@ -75,6 +75,17 @@ struct TinyalsaSink : public DevicePortSink {
         mConsumeThread.join();
     }
 
+    static int getLatencyMs(const AudioConfig &cfg) {
+        constexpr size_t inMs = 1000;
+        const talsa::PcmPeriodSettings periodSettings =
+            talsa::pcmGetPcmPeriodSettings();
+        const size_t numerator = periodSettings.periodSizeMultiplier * cfg.frameCount;
+        const size_t denominator = periodSettings.periodCount * cfg.base.sampleRateHz / inMs;
+
+        // integer division with rounding
+        return (numerator + (denominator >> 1)) / denominator + talsa::pcmGetHostLatencyMs();
+    }
+
     Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) override {
         const AutoMutex lock(mFrameCountersMutex);
 
@@ -244,6 +255,10 @@ struct NullSink : public DevicePortSink {
             , mInitialFrames(frames)
             , mFrames(frames) {}
 
+    static int getLatencyMs(const AudioConfig &) {
+        return 1;
+    }
+
     Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) override {
         const AutoMutex lock(mFrameCountersMutex);
 
@@ -375,6 +390,22 @@ DevicePortSink::create(size_t readerBufferSizeHint,
 
 nullsink:
     return NullSink::create(cfg, readerBufferSizeHint, frames);
+}
+
+int DevicePortSink::getLatencyMs(const DeviceAddress &address, const AudioConfig &cfg) {
+    switch (xsd::stringToAudioDevice(address.deviceType)) {
+    default:
+        ALOGW("%s:%d unsupported device: '%s'", __func__, __LINE__, address.deviceType.c_str());
+        return FAILURE(-1);
+
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_DEFAULT:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_SPEAKER:
+        return TinyalsaSink::getLatencyMs(cfg);
+
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_TELEPHONY_TX:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_BUS:
+        return NullSink::getLatencyMs(cfg);
+    }
 }
 
 bool DevicePortSink::validateDeviceAddress(const DeviceAddress& address) {
