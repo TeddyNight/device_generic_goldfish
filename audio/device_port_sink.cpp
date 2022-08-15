@@ -62,8 +62,12 @@ struct TinyalsaSink : public DevicePortSink {
                                   cfg.base.sampleRateHz,
                                   cfg.frameCount,
                                   true /* isOut */)) {
-        LOG_ALWAYS_FATAL_IF(::pcm_prepare(mPcm.get()));
-        mConsumeThread = std::thread(&TinyalsaSink::consumeThread, this);
+        if (mPcm) {
+            LOG_ALWAYS_FATAL_IF(!talsa::pcmPrepare(mPcm.get()));
+            mConsumeThread = std::thread(&TinyalsaSink::consumeThread, this);
+        } else {
+            mConsumeThread = std::thread([](){});
+        }
     }
 
     ~TinyalsaSink() {
@@ -71,12 +75,15 @@ struct TinyalsaSink : public DevicePortSink {
         mConsumeThread.join();
     }
 
-    Result start() override {
-        return ::pcm_start(mPcm.get()) ? FAILURE(Result::INVALID_STATE) : Result::OK;
-    }
+    static int getLatencyMs(const AudioConfig &cfg) {
+        constexpr size_t inMs = 1000;
+        const talsa::PcmPeriodSettings periodSettings =
+            talsa::pcmGetPcmPeriodSettings();
+        const size_t numerator = periodSettings.periodSizeMultiplier * cfg.frameCount;
+        const size_t denominator = periodSettings.periodCount * cfg.base.sampleRateHz / inMs;
 
-    Result stop() override {
-        return ::pcm_stop(mPcm.get()) ? FAILURE(Result::INVALID_STATE) : Result::OK;
+        // integer division with rounding
+        return (numerator + (denominator >> 1)) / denominator + talsa::pcmGetHostLatencyMs();
     }
 
     Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) override {
@@ -203,11 +210,7 @@ struct TinyalsaSink : public DevicePortSink {
                     LOG_ALWAYS_FATAL_IF(mRingBuffer.consume(chunk, szBytes) < szBytes);
                 }
 
-                int res = ::pcm_write(mPcm.get(), writeBuffer.data(), szBytes);
-                if (res < 0) {
-                    ALOGW("TinyalsaSink::%s:%d pcm_write failed with res=%d",
-                          __func__, __LINE__, res);
-                }
+                talsa::pcmWrite(mPcm.get(), writeBuffer.data(), szBytes);
             }
         }
     }
@@ -252,8 +255,9 @@ struct NullSink : public DevicePortSink {
             , mInitialFrames(frames)
             , mFrames(frames) {}
 
-    Result start() override { return Result::OK; }
-    Result stop() override { return Result::OK; }
+    static int getLatencyMs(const AudioConfig &) {
+        return 1;
+    }
 
     Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) override {
         const AutoMutex lock(mFrameCountersMutex);
@@ -386,6 +390,22 @@ DevicePortSink::create(size_t readerBufferSizeHint,
 
 nullsink:
     return NullSink::create(cfg, readerBufferSizeHint, frames);
+}
+
+int DevicePortSink::getLatencyMs(const DeviceAddress &address, const AudioConfig &cfg) {
+    switch (xsd::stringToAudioDevice(address.deviceType)) {
+    default:
+        ALOGW("%s:%d unsupported device: '%s'", __func__, __LINE__, address.deviceType.c_str());
+        return FAILURE(-1);
+
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_DEFAULT:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_SPEAKER:
+        return TinyalsaSink::getLatencyMs(cfg);
+
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_TELEPHONY_TX:
+    case xsd::AudioDevice::AUDIO_DEVICE_OUT_BUS:
+        return NullSink::getLatencyMs(cfg);
+    }
 }
 
 bool DevicePortSink::validateDeviceAddress(const DeviceAddress& address) {

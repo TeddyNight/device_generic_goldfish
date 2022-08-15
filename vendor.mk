@@ -29,7 +29,7 @@ PRODUCT_SYSTEM_EXT_PROPERTIES += ro.lockscreen.disable.default=1
 
 DISABLE_RILD_OEM_HOOK := true
 
-DEVICE_MANIFEST_FILE := device/generic/goldfish/manifest.xml
+DEVICE_MANIFEST_FILE += device/generic/goldfish/manifest.xml
 PRODUCT_SOONG_NAMESPACES += hardware/google/camera
 PRODUCT_SOONG_NAMESPACES += hardware/google/camera/devices/EmulatedCamera
 
@@ -46,8 +46,8 @@ PRODUCT_PACKAGES += \
     qemu-props \
     stagefright \
     android.hardware.graphics.composer@2.4-service \
-    android.hardware.graphics.allocator@4.0-service.minigbm \
-    android.hardware.graphics.mapper@4.0-impl.minigbm \
+    android.hardware.graphics.allocator@3.0-service \
+    android.hardware.graphics.mapper@3.0-impl-ranchu \
     hwcomposer.ranchu \
     toybox_vendor \
     android.hardware.wifi@1.0-service \
@@ -185,7 +185,7 @@ endif
 ifneq ($(EMULATOR_VENDOR_NO_SOUND),true)
 PRODUCT_PACKAGES += \
     android.hardware.audio.service \
-    android.hardware.audio@7.0-impl.ranchu \
+    android.hardware.audio@7.1-impl.ranchu \
     android.hardware.soundtrigger@2.2-impl.ranchu \
     android.hardware.audio.effect@7.0-impl \
 
