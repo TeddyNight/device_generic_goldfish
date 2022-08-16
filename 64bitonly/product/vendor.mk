@@ -50,14 +50,12 @@ PRODUCT_PACKAGES += \
     qemu-device-state \
     qemu-props \
     stagefright \
-    fingerprint.ranchu \
     android.hardware.graphics.composer@2.4-service \
-    android.hardware.graphics.allocator@4.0-service.minigbm \
-    android.hardware.graphics.mapper@4.0-impl.minigbm \
+    android.hardware.graphics.allocator@3.0-service \
+    android.hardware.graphics.mapper@3.0-impl-ranchu \
     hwcomposer.ranchu \
     toybox_vendor \
     android.hardware.wifi@1.0-service \
-    android.hardware.biometrics.fingerprint@2.1-service \
     android.hardware.media.c2@1.0-service-goldfish \
     libcodec2_goldfish_vp8dec \
     libcodec2_goldfish_vp9dec \
@@ -66,10 +64,18 @@ PRODUCT_PACKAGES += \
     local_time.default \
     SdkSetup \
     EmulatorRadioConfig \
-    EmulatorConnectivityOverlay \
+    goldfish_overlay_connectivity_gsi \
     EmulatorTetheringConfigOverlay \
     MultiDisplayProvider \
     libGoldfishProfiler
+
+ifneq ($(EMULATOR_VENDOR_NO_FINGERPRINT), true)
+    PRODUCT_PACKAGES += \
+        fingerprint.ranchu \
+        android.hardware.biometrics.fingerprint@2.1-service
+    PRODUCT_COPY_FILES += \
+        frameworks/native/data/etc/android.hardware.fingerprint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.fingerprint.xml
+endif
 
 ifneq ($(BUILD_EMULATOR_OPENGL),false)
 PRODUCT_PACKAGES += \
@@ -180,7 +186,7 @@ endif
 ifneq ($(EMULATOR_VENDOR_NO_SOUND),true)
 PRODUCT_PACKAGES += \
     android.hardware.audio.service \
-    android.hardware.audio@7.0-impl.ranchu \
+    android.hardware.audio@7.1-impl.ranchu \
     android.hardware.soundtrigger@2.2-impl.ranchu \
     android.hardware.audio.effect@7.0-impl \
 
@@ -319,7 +325,6 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.camera.front.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.front.xml \
     frameworks/native/data/etc/android.hardware.camera.full.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.full.xml \
     frameworks/native/data/etc/android.hardware.camera.raw.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.raw.xml \
-    frameworks/native/data/etc/android.hardware.fingerprint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.fingerprint.xml \
     frameworks/native/data/etc/android.hardware.vulkan.level-1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.level.xml \
     frameworks/native/data/etc/android.hardware.vulkan.compute-0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.compute.xml \
     frameworks/native/data/etc/android.hardware.vulkan.version-1_1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.version.xml \
