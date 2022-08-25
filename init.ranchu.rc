@@ -11,7 +11,6 @@ on late-fs
 on early-init
     mount proc proc /proc remount hidepid=2,gid=3009
     setprop ro.hardware.vulkan ranchu
-    setprop ro.hardware.gralloc minigbm
 
     # true if ram is <= 2G
     setprop ro.config.low_ram ${ro.boot.config.low_ram}
@@ -57,6 +56,10 @@ on init
     chmod 0664 /dev/cpuctl/background/tasks
     chmod 0664 /dev/cpuctl/top-app/tasks
     chmod 0664 /dev/cpuctl/rt/tasks
+
+    setprop ro.hardware.audio.tinyalsa.period_count 4
+    setprop ro.hardware.audio.tinyalsa.period_size_multiplier 4
+    setprop ro.hardware.audio.tinyalsa.host_latency_ms 30
 
     start qemu-props
 
