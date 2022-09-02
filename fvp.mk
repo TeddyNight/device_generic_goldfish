@@ -72,7 +72,7 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_HOST_PACKAGES += bind_to_localhost
 
-PRODUCT_PACKAGE_OVERLAYS := device/generic/goldfish/overlay
+PRODUCT_PACKAGE_OVERLAYS := device/generic/goldfish/fvpbase/overlay
 
 PRODUCT_NAME := fvp
 PRODUCT_DEVICE := fvpbase
@@ -113,7 +113,7 @@ PRODUCT_REQUIRES_INSECURE_EXECMEM_FOR_SWIFTSHADER := true
 # It's almost always faster to dexopt on the host even in eng builds.
 WITH_DEXPREOPT_BOOT_IMG_AND_SYSTEM_SERVER_ONLY := false
 
-DEVICE_MANIFEST_FILE := device/generic/goldfish/fvpbase/manifest.xml
+DEVICE_MANIFEST_FILE += device/generic/goldfish/fvpbase/manifest.xml
 
 # Use a multilib setup (see fvpbase/BoardConfig.mk).
 FVP_MULTILIB_BUILD := true
