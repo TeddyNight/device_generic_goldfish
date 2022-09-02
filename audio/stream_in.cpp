@@ -294,7 +294,7 @@ Return<void> StreamIn::getParameters(const hidl_vec<ParameterValue>& context,
                                      const hidl_vec<hidl_string>& keys,
                                      getParameters_cb _hidl_cb) {
     (void)context;
-    _hidl_cb((keys.size() > 0) ? FAILURE(Result::NOT_SUPPORTED) : Result::OK, {});
+    _hidl_cb((keys.size() > 0) ? Result::NOT_SUPPORTED : Result::OK, {});
     return Void();
 }
 
@@ -455,12 +455,6 @@ bool StreamIn::validateSinkMetadata(const SinkMetadata& sinkMetadata) {
         if (xsd::isUnknownAudioSource(track.source)
                 || xsd::isUnknownAudioChannelMask(track.channelMask)) {
             return false;
-        }
-        if (track.destination.getDiscriminator() ==
-                RecordTrackMetadata::Destination::hidl_discriminator::device) {
-            if (!validateDeviceAddress(track.destination.device())) {
-                return false;
-            }
         }
         for (const auto& tag : track.tags) {
             if (!xsd::isVendorExtension(tag)) {
