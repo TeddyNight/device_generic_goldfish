@@ -40,7 +40,6 @@ struct DevicePortSink {
                                                   const hidl_vec<AudioInOutFlag> &,
                                                   uint64_t &frames);
 
-    static int getLatencyMs(const DeviceAddress &, const AudioConfig &);
     static bool validateDeviceAddress(const DeviceAddress &);
 };
 
