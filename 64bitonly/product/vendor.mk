@@ -21,7 +21,7 @@ $(call inherit-product-if-exists, frameworks/native/build/phone-xhdpi-2048-dalvi
 # Enable Scoped Storage related
 $(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 
-DEVICE_MANIFEST_FILE += device/generic/goldfish/64bitonly/manifest.xml
+DEVICE_MANIFEST_FILE += device/generic/goldfish/manifest.xml
 
 PRODUCT_SOONG_NAMESPACES += \
     device/generic/goldfish \
@@ -29,11 +29,13 @@ PRODUCT_SOONG_NAMESPACES += \
 
 PRODUCT_SYSTEM_EXT_PROPERTIES += ro.lockscreen.disable.default=1
 
-PRODUCT_SOONG_NAMESPACES += hardware/google/camera
-PRODUCT_SOONG_NAMESPACES += hardware/google/camera/devices/EmulatedCamera
-
 # Device modules
 PRODUCT_PACKAGES += \
+    android.hardware.drm@1.0-service \
+    android.hardware.drm@1.0-impl \
+    android.hardware.drm-service.clearkey \
+    android.hardware.gatekeeper@1.0-service.software \
+    android.hardware.usb@1.0-service \
     vulkan.ranchu \
     libandroidemu \
     libOpenglCodecCommon \
@@ -98,7 +100,10 @@ PRODUCT_PACKAGES += \
     bt_vhci_forwarder \
     android.hardware.bluetooth@1.1-service.btlinux \
     android.hardware.bluetooth.audio@2.1-impl
- #
+
+# Bluetooth hardware properties.
+TARGET_PRODUCT_PROP := $(LOCAL_PATH)/../../bluetooth.prop
+
 # Bluetooth se policies
 BOARD_SEPOLICY_DIRS += system/bt/vendor_libs/linux/sepolicy
 
@@ -129,8 +134,6 @@ PRODUCT_PACKAGES += \
     NavigationBarMode2ButtonOverlay \
 
 ifneq ($(EMULATOR_VENDOR_NO_GNSS),true)
-#disable the following as it does not support gnss yet
-#PRODUCT_PACKAGES += android.hardware.gnss-service.example
 PRODUCT_PACKAGES += android.hardware.gnss@2.0-service.ranchu
 endif
 
@@ -146,11 +149,6 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/sensors/hals.conf:$(TARGET_COPY_OUT_VENDOR)/etc/sensors/hals.conf
 endif
 
-PRODUCT_PACKAGES += \
-    android.hardware.drm@1.0-service \
-    android.hardware.drm@1.0-impl \
-    android.hardware.drm-service.clearkey
-
 PRODUCT_PROPERTY_OVERRIDES += ro.control_privapp_permissions=enforce
 PRODUCT_PROPERTY_OVERRIDES += ro.hardware.power=ranchu
 PRODUCT_PROPERTY_OVERRIDES += ro.crypto.volume.filenames_mode=aes-256-cts
@@ -162,14 +160,35 @@ PRODUCT_PROPERTY_OVERRIDES += persist.sys.zram_enabled=1 \
 PRODUCT_PROPERTY_OVERRIDES += ro.logd.size=1M \
 
 ifneq ($(EMULATOR_VENDOR_NO_CAMERA),true)
+PRODUCT_SOONG_NAMESPACES += \
+    hardware/google/camera \
+    hardware/google/camera/devices/EmulatedCamera \
+
 PRODUCT_PACKAGES += \
     android.hardware.camera.provider@2.4-service_64 \
     android.hardware.camera.provider@2.4-impl \
     camera.ranchu \
     camera.ranchu.jpeg \
     android.hardware.camera.provider@2.7-service-google \
+    android.hardware.camera.provider@2.7-impl-google \
     libgooglecamerahwl_impl \
-    android.hardware.camera.provider@2.7-impl-google
+
+PRODUCT_COPY_FILES += \
+    device/generic/goldfish/camera/media_profiles.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_profiles_V1_0.xml \
+    device/generic/goldfish/camera/media_codecs_google_video_default.xml:${TARGET_COPY_OUT_VENDOR}/etc/media_codecs_google_video.xml \
+    device/generic/goldfish/camera/media_codecs.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs.xml \
+    device/generic/goldfish/camera/media_codecs_performance.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_performance.xml \
+    device/generic/goldfish/camera/media_codecs_performance_c2.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_performance_c2.xml \
+    frameworks/native/data/etc/android.hardware.camera.ar.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.ar.xml \
+    frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.flash-autofocus.xml \
+    frameworks/native/data/etc/android.hardware.camera.concurrent.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.concurrent.xml \
+    frameworks/native/data/etc/android.hardware.camera.front.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.front.xml \
+    frameworks/native/data/etc/android.hardware.camera.full.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.full.xml \
+    frameworks/native/data/etc/android.hardware.camera.raw.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.raw.xml \
+    hardware/google/camera/devices/EmulatedCamera/hwl/configs/emu_camera_back.json:$(TARGET_COPY_OUT_VENDOR)/etc/config/emu_camera_back.json \
+    hardware/google/camera/devices/EmulatedCamera/hwl/configs/emu_camera_front.json:$(TARGET_COPY_OUT_VENDOR)/etc/config/emu_camera_front.json \
+    hardware/google/camera/devices/EmulatedCamera/hwl/configs/emu_camera_depth.json:$(TARGET_COPY_OUT_VENDOR)/etc/config/emu_camera_depth.json \
+
 endif
 
 ifneq ($(EMULATOR_VENDOR_NO_SOUND),true)
@@ -193,18 +212,12 @@ PRODUCT_COPY_FILES += \
 
 endif
 
-PRODUCT_PACKAGES += \
-    android.hardware.gatekeeper@1.0-service.software
-
 # WiFi: vendor side
 PRODUCT_PACKAGES += \
-	mac80211_create_radios \
-	dhcpclient \
-	hostapd \
-	wpa_supplicant \
-
-PRODUCT_PACKAGES += \
-    android.hardware.usb@1.0-service
+    mac80211_create_radios \
+    dhcpclient \
+    hostapd \
+    wpa_supplicant \
 
 # Extension implementation for Jetpack WindowManager
 PRODUCT_PACKAGES += \
@@ -282,20 +295,9 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.wifi.direct.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.direct.xml \
     frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml \
     device/generic/goldfish/data/etc/handheld_core_hardware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/handheld_core_hardware.xml \
-    device/generic/goldfish/camera/media_profiles.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_profiles_V1_0.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_audio.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_telephony.xml \
-    device/generic/goldfish/camera/media_codecs_google_video_default.xml:${TARGET_COPY_OUT_VENDOR}/etc/media_codecs_google_video.xml \
-    device/generic/goldfish/camera/media_codecs.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs.xml \
-    device/generic/goldfish/camera/media_codecs_performance.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_performance.xml \
-    device/generic/goldfish/camera/media_codecs_performance_c2.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_performance_c2.xml \
     frameworks/native/data/etc/android.hardware.touchscreen.multitouch.jazzhand.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml \
-    frameworks/native/data/etc/android.hardware.camera.ar.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.ar.xml \
-    frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.flash-autofocus.xml \
-    frameworks/native/data/etc/android.hardware.camera.concurrent.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.concurrent.xml \
-    frameworks/native/data/etc/android.hardware.camera.front.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.front.xml \
-    frameworks/native/data/etc/android.hardware.camera.full.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.full.xml \
-    frameworks/native/data/etc/android.hardware.camera.raw.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.raw.xml \
     frameworks/native/data/etc/android.hardware.vulkan.level-1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.level.xml \
     frameworks/native/data/etc/android.hardware.vulkan.compute-0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.compute.xml \
     frameworks/native/data/etc/android.hardware.vulkan.version-1_1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.version.xml \
@@ -304,6 +306,3 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.software.autofill.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.autofill.xml \
     frameworks/native/data/etc/android.software.verified_boot.xml:${TARGET_COPY_OUT_PRODUCT}/etc/permissions/android.software.verified_boot.xml \
     device/generic/goldfish/data/etc/permissions/privapp-permissions-goldfish.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-goldfish.xml \
-    hardware/google/camera/devices/EmulatedCamera/hwl/configs/emu_camera_back.json:$(TARGET_COPY_OUT_VENDOR)/etc/config/emu_camera_back.json \
-    hardware/google/camera/devices/EmulatedCamera/hwl/configs/emu_camera_front.json:$(TARGET_COPY_OUT_VENDOR)/etc/config/emu_camera_front.json \
-    hardware/google/camera/devices/EmulatedCamera/hwl/configs/emu_camera_depth.json:$(TARGET_COPY_OUT_VENDOR)/etc/config/emu_camera_depth.json \
