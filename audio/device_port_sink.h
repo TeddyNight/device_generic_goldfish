@@ -31,8 +31,6 @@ using namespace ::android::hardware::audio::V6_0;
 
 struct DevicePortSink {
     virtual ~DevicePortSink() {}
-    virtual Result start() = 0;
-    virtual Result stop() = 0;
     virtual Result getPresentationPosition(uint64_t &frames, TimeSpec &ts) = 0;
     virtual size_t write(float volume, size_t bytesToWrite, IReader &) = 0;
 
@@ -41,6 +39,8 @@ struct DevicePortSink {
                                                   const AudioConfig &,
                                                   const hidl_bitfield<AudioOutputFlag> &,
                                                   uint64_t &frames);
+
+    static int getLatencyMs(const DeviceAddress &, const AudioConfig &);
 };
 
 }  // namespace implementation
