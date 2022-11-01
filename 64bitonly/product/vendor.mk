@@ -51,8 +51,8 @@ PRODUCT_PACKAGES += \
     qemu-props \
     stagefright \
     android.hardware.graphics.composer@2.4-service \
-    android.hardware.graphics.allocator@4.0-service.minigbm \
-    android.hardware.graphics.mapper@4.0-impl.minigbm \
+    android.hardware.graphics.allocator@3.0-service \
+    android.hardware.graphics.mapper@3.0-impl-ranchu \
     hwcomposer.ranchu \
     toybox_vendor \
     android.hardware.wifi@1.0-service \
@@ -65,7 +65,7 @@ PRODUCT_PACKAGES += \
     local_time.default \
     SdkSetup \
     EmulatorRadioConfig \
-    EmulatorConnectivityOverlay \
+    goldfish_overlay_connectivity_gsi \
     EmulatorTetheringConfigOverlay \
     MultiDisplayProvider \
     libGoldfishProfiler
@@ -90,12 +90,16 @@ PRODUCT_PACKAGES += \
     libGLESv2_angle
 endif
 
+#
 # Enable bluetooth
 PRODUCT_PACKAGES += \
     bt_vhci_forwarder \
     android.hardware.bluetooth@1.1-service.btlinux \
     android.hardware.bluetooth.audio@2.1-impl
- #
+
+# Bluetooth hardware properties.
+TARGET_PRODUCT_PROP := $(LOCAL_PATH)/../../bluetooth.prop
+
 # Bluetooth se policies
 BOARD_SEPOLICY_DIRS += system/bt/vendor_libs/linux/sepolicy
 
@@ -187,7 +191,7 @@ endif
 ifneq ($(EMULATOR_VENDOR_NO_SOUND),true)
 PRODUCT_PACKAGES += \
     android.hardware.audio.service \
-    android.hardware.audio@7.0-impl.ranchu \
+    android.hardware.audio@7.1-impl.ranchu \
     android.hardware.soundtrigger@2.2-impl.ranchu \
     android.hardware.audio.effect@7.0-impl \
 
@@ -311,6 +315,7 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.wifi.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.xml \
     frameworks/native/data/etc/android.hardware.wifi.passpoint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.passpoint.xml \
     frameworks/native/data/etc/android.hardware.wifi.direct.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.wifi.direct.xml \
+    frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml \
     device/generic/goldfish/data/etc/handheld_core_hardware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/handheld_core_hardware.xml \
     device/generic/goldfish/camera/media_profiles.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_profiles_V1_0.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_audio.xml \
