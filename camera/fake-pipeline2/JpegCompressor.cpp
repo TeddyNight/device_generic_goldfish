@@ -15,14 +15,13 @@
  */
 
 //#define LOG_NDEBUG 0
-#define LOG_TAG "EmulatedCamera2_JpegCompressor"
+#define LOG_TAG "JpegCompressor"
 
 #include <log/log.h>
 
 #include <gralloc_cb_bp.h>
 #include "JpegCompressor.h"
-#include "../EmulatedFakeCamera2.h"
-#include "../EmulatedFakeCamera3.h"
+#include "../JpegCompressor.h"
 #include "../Exif.h"
 #include "../Thumbnail.h"
 #include "hardware/camera3.h"
@@ -156,7 +155,7 @@ status_t JpegCompressor::compress() {
     }
 
     // Create EXIF data and compress thumbnail
-    ExifData* exifData = createExifData(mSettings, mAuxBuffer.width, mAuxBuffer.height);
+    ExifDataPtr exifData = createExifData(mSettings, mAuxBuffer.width, mAuxBuffer.height);
     entry = mSettings.find(ANDROID_JPEG_THUMBNAIL_SIZE);
     if (entry.count > 0) {
         thumbWidth = entry.data.i32[0];
@@ -170,7 +169,7 @@ status_t JpegCompressor::compress() {
         createThumbnail(static_cast<const unsigned char*>(mAuxBuffer.img),
                         mAuxBuffer.width, mAuxBuffer.height,
                         thumbWidth, thumbHeight,
-                        thumbJpegQuality, exifData);
+                        thumbJpegQuality, exifData.get());
     }
 
     // Compress the image
@@ -182,7 +181,7 @@ status_t JpegCompressor::compress() {
     nV21JpegCompressor.compressRawImage((void*)mAuxBuffer.img,
                                          mAuxBuffer.width,
                                          mAuxBuffer.height,
-                                         jpegQuality, exifData);
+                                         jpegQuality, exifData.get());
     nV21JpegCompressor.getCompressedImage((void*)mJpegBuffer.img);
 
     // Refer to /hardware/libhardware/include/hardware/camera3.h
@@ -194,7 +193,6 @@ status_t JpegCompressor::compress() {
     memcpy(mJpegBuffer.img + cb->width - sizeof(camera3_jpeg_blob_t),
            &jpeg_blob, sizeof(camera3_jpeg_blob_t));
 
-    freeExifData(exifData);
     return OK;
 }
 
