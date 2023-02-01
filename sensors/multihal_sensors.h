@@ -20,6 +20,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <random>
 #include <queue>
 #include <thread>
 #include <vector>
@@ -32,6 +33,7 @@ namespace ahs10 = ahs::V1_0;
 using ahs21::implementation::IHalProxyCallback;
 using ahs21::SensorInfo;
 using ahs21::Event;
+using ahs10::AdditionalInfo;
 using ahs10::OperationMode;
 using ahs10::RateLevel;
 using ahs10::Result;
@@ -97,9 +99,13 @@ private:
     void parseQemuSensorEvent(const int pipe, QemuSensorsProtocolState* state);
     void postSensorEvent(const Event& event);
     void doPostSensorEventLocked(const SensorInfo& sensor, const Event& event);
+    void setAdditionalInfoFrames();
+    void sendAdditionalInfoReport(int sensorHandle);
 
     void qemuSensorListenerThread();
     void batchThread();
+
+    double randomError(float lo, float hi);
 
     static constexpr char kCMD_QUIT = 'q';
     bool qemuSensorThreadSendCommand(char cmd) const;
@@ -116,6 +122,8 @@ private:
     uint32_t                m_activeSensorsMask = 0;
     OperationMode           m_opMode = OperationMode::NORMAL;
     sp<IHalProxyCallback>   m_halProxyCallback;
+
+    std::vector<AdditionalInfo> mAdditionalInfoFrames;
 
     // batching
     struct BatchEventRef {
@@ -142,6 +150,9 @@ private:
     std::atomic<bool>                       m_batchRunning = true;
 
     mutable std::mutex                      m_mtx;
+
+    std::random_device rd;
+    std::mt19937 gen = std::mt19937(rd());
 };
 
 }  // namespace goldfish
