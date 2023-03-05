@@ -43,13 +43,16 @@ namespace hw {
 using base::unique_fd;
 
 namespace {
+constexpr char kClass[] = "QemuCamera";
 
-constexpr int kMaxFPS = 30;
 constexpr int kMinFPS = 2;
+constexpr int kMedFPS = 15;
+constexpr int kMaxFPS = 30;
 constexpr int64_t kOneSecondNs = 1000000000;
 
 constexpr int64_t kMinFrameDurationNs = kOneSecondNs / kMaxFPS;
-constexpr int64_t kDefaultFrameDurationNs = kMinFrameDurationNs;
+constexpr int64_t kMaxFrameDurationNs = kOneSecondNs / kMinFPS;
+constexpr int64_t kDefaultFrameDurationNs = kOneSecondNs / kMedFPS;
 
 constexpr int64_t kMinSensorExposureTimeNs = kOneSecondNs / 20000;
 constexpr int64_t kMaxSensorExposureTimeNs = kOneSecondNs / 2;
@@ -192,8 +195,8 @@ QemuCamera::processCaptureRequest(CameraMetadata metadataUpdate,
         if (!si) {
             const auto sii = mStreamInfoCache.find(csb->getStreamId());
             if (sii == mStreamInfoCache.end()) {
-                ALOGE("%s:%d could not find stream=%d in the cache",
-                      __func__, __LINE__, csb->getStreamId());
+                ALOGE("%s:%s:%d could not find stream=%d in the cache",
+                      kClass, __func__, __LINE__, csb->getStreamId());
             } else {
                 si = &sii->second;
                 csb->setStreamInfo(si);
@@ -231,7 +234,7 @@ void QemuCamera::captureFrame(const StreamInfo& si,
 
     default:
         ALOGE("%s:%s:%d: unexpected pixelFormat=0x%" PRIx32,
-              "QemuCamera", __func__, __LINE__,
+              kClass, __func__, __LINE__,
               static_cast<uint32_t>(si.pixelFormat));
         outputBuffers->push_back(csb->finish(false));
         break;
@@ -329,14 +332,16 @@ const native_handle_t* QemuCamera::captureFrameForCompressing(
         const Rect<uint16_t> dim,
         const PixelFormat bufferFormat,
         const uint32_t qemuFormat) const {
+    constexpr BufferUsage kUsage = usageOr(BufferUsage::CAMERA_OUTPUT,
+                                           BufferUsage::CPU_READ_OFTEN);
+
     GraphicBufferAllocator& gba = GraphicBufferAllocator::get();
     const native_handle_t* image = nullptr;
     uint32_t stride;
 
-    gba.allocate(dim.width, dim.height, static_cast<int>(bufferFormat), 1,
-                 static_cast<uint64_t>(BufferUsage::CAMERA_OUTPUT),
-                 &image, &stride, "QemuCamera");
-    if (!image) {
+    if (gba.allocate(dim.width, dim.height, static_cast<int>(bufferFormat), 1,
+                     static_cast<uint64_t>(kUsage), &image, &stride,
+                     "QemuCamera") != NO_ERROR) {
         return FAILURE(nullptr);
     }
 
@@ -386,11 +391,8 @@ CameraMetadata QemuCamera::applyMetadata(const CameraMetadata& metadata) {
         reinterpret_cast<const camera_metadata_t*>(metadata.metadata.data());
     camera_metadata_ro_entry_t entry;
 
-    if (find_camera_metadata_ro_entry(raw, ANDROID_SENSOR_FRAME_DURATION, &entry)) {
-        mFrameDurationNs = kDefaultFrameDurationNs;
-    } else {
-        mFrameDurationNs = entry.data.i64[0];
-    }
+    mFrameDurationNs = getFrameDuration(raw, kDefaultFrameDurationNs,
+                                        kMinFrameDurationNs, kMaxFrameDurationNs);
 
     if (find_camera_metadata_ro_entry(raw, ANDROID_SENSOR_EXPOSURE_TIME, &entry)) {
         mSensorExposureDurationNs = std::min(mFrameDurationNs, kDefaultSensorExposureTimeNs);
@@ -464,8 +466,8 @@ CameraMetadata QemuCamera::applyMetadata(const CameraMetadata& metadata) {
             CameraMetadata result = mCaptureResultMetadata;
 
             if (update_camera_metadata_entry(raw, entry.index, &newTriggerValue, 1, nullptr)) {
-                ALOGW("%s:%d: update_camera_metadata_entry(ANDROID_CONTROL_AF_TRIGGER) "
-                      "failed", __func__, __LINE__);
+                ALOGW("%s:%s:%d: update_camera_metadata_entry(ANDROID_CONTROL_AF_TRIGGER) "
+                      "failed", kClass, __func__, __LINE__);
             }
 
             return result;
@@ -482,19 +484,19 @@ CameraMetadata QemuCamera::updateCaptureResultMetadata() {
     camera_metadata_ro_entry_t entry;
 
     if (find_camera_metadata_ro_entry(raw, ANDROID_CONTROL_AF_STATE, &entry)) {
-        ALOGW("%s:%d: find_camera_metadata_ro_entry(ANDROID_CONTROL_AF_STATE) failed",
-              __func__, __LINE__);
+        ALOGW("%s:%s:%d: find_camera_metadata_ro_entry(ANDROID_CONTROL_AF_STATE) failed",
+              kClass, __func__, __LINE__);
     } else if (update_camera_metadata_entry(raw, entry.index, &af.first, 1, nullptr)) {
-        ALOGW("%s:%d: update_camera_metadata_entry(ANDROID_CONTROL_AF_STATE) failed",
-              __func__, __LINE__);
+        ALOGW("%s:%s:%d: update_camera_metadata_entry(ANDROID_CONTROL_AF_STATE) failed",
+              kClass, __func__, __LINE__);
     }
 
     if (find_camera_metadata_ro_entry(raw, ANDROID_LENS_FOCUS_DISTANCE, &entry)) {
-        ALOGW("%s:%d: find_camera_metadata_ro_entry(ANDROID_LENS_FOCUS_DISTANCE) failed",
-              __func__, __LINE__);
+        ALOGW("%s:%s:%d: find_camera_metadata_ro_entry(ANDROID_LENS_FOCUS_DISTANCE) failed",
+              kClass, __func__, __LINE__);
     } else if (update_camera_metadata_entry(raw, entry.index, &af.second, 1, nullptr)) {
-        ALOGW("%s:%d: update_camera_metadata_entry(ANDROID_LENS_FOCUS_DISTANCE) failed",
-              __func__, __LINE__);
+        ALOGW("%s:%s:%d: update_camera_metadata_entry(ANDROID_LENS_FOCUS_DISTANCE) failed",
+              kClass, __func__, __LINE__);
     }
 
     return metadataCompact(mCaptureResultMetadata);
@@ -503,7 +505,10 @@ CameraMetadata QemuCamera::updateCaptureResultMetadata() {
 ////////////////////////////////////////////////////////////////////////////////
 
 Span<const std::pair<int32_t, int32_t>> QemuCamera::getTargetFpsRanges() const {
+    // ordered to satisfy testPreviewFpsRangeByCamera
     static const std::pair<int32_t, int32_t> targetFpsRanges[] = {
+        {kMinFPS, kMedFPS},
+        {kMedFPS, kMedFPS},
         {kMinFPS, kMaxFPS},
         {kMaxFPS, kMaxFPS},
     };
@@ -549,10 +554,6 @@ Span<const PixelFormat> QemuCamera::getSupportedPixelFormats() const {
 
 int64_t QemuCamera::getMinFrameDurationNs() const {
     return kMinFrameDurationNs;
-}
-
-int32_t QemuCamera::getSensorOrientation() const {
-    return 90;
 }
 
 Rect<uint16_t> QemuCamera::getSensorSize() const {
