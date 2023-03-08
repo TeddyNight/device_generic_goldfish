@@ -17,6 +17,7 @@
 #include <chrono>
 #include <log/log.h>
 #include <utils/SystemClock.h>
+#include <debug.h>
 #include "gnss_hw_listener.h"
 #include "util.h"
 
@@ -86,11 +87,11 @@ void GnssHwListener::consume(char c) {
         } else {
             m_buffer.back() = 0;
             ALOGW("%s:%d: failed to parse an NMEA message, '%s'",
-                  __PRETTY_FUNCTION__, __LINE__, m_buffer.data());
+                  __func__, __LINE__, m_buffer.data());
         }
         m_buffer.clear();
     } else if (m_buffer.size() >= 1024) {
-        ALOGW("%s:%d buffer was too long, dropped", __PRETTY_FUNCTION__, __LINE__);
+        ALOGW("%s:%d buffer was too long, dropped", __func__, __LINE__);
         m_buffer.clear();
     }
 }
@@ -103,7 +104,7 @@ bool GnssHwListener::parse(const char* begin, const char* end,
     } else if (const char* fields = testNmeaField(begin, end, "GPGGA", ',')) {
         return parseGPGGA(fields, end, t, ert);
     } else {
-        return false;
+        return FAILURE(false);
     }
 }
 
@@ -150,10 +151,10 @@ bool GnssHwListener::parseGPRMC(const char* begin, const char*,
                &speedKnots, &course,
                &ddmoyy,
                &variation, &var_ew) != 13) {
-        return false;
+        return FAILURE(false);
     }
     if (validity != 'A') {
-        return false;
+        return FAILURE(false);
     }
 
     const double lat = convertDMMF(latdmm, latf, latfConsumed - latdmmConsumed) * sign(ns, 'N');
@@ -183,8 +184,8 @@ bool GnssHwListener::parseGPRMC(const char* begin, const char*,
         GnssLocationFlags::HAS_SPEED_ACCURACY |
         GnssLocationFlags::HAS_BEARING_ACCURACY;
 
-    if (m_flags & GnssLocationFlags::HAS_ALTITUDE) {
-        loc10.altitudeMeters = m_altitude;
+    if (m_altitude.has_value()) {
+        loc10.altitudeMeters = m_altitude.value();
         loc10.verticalAccuracyMeters = .5;
         loc10.gnssLocationFlags |= GnssLocationFlags::HAS_ALTITUDE |
                                    GnssLocationFlags::HAS_VERTICAL_ACCURACY;
@@ -237,22 +238,21 @@ bool GnssHwListener::parseGPGGA(const char* begin, const char* end,
                &fixQuality,
                &nSatellites,
                &consumed) != 9) {
-        return false;
+        return FAILURE(false);
     }
 
     begin = skipAfter(begin + consumed, end, ',');  // skip HDOP
     if (!begin) {
-        return false;
+        return FAILURE(false);
     }
     if (sscanf(begin, "%lf,%c,", &altitude, &altitudeUnit) != 2) {
-        return false;
+        return FAILURE(false);
     }
     if (altitudeUnit != 'M') {
-        return false;
+        return FAILURE(false);
     }
 
     m_altitude = altitude;
-    m_flags |= ahg10::GnssLocationFlags::HAS_ALTITUDE;
 
     hidl_vec<ahg20::IGnssCallback::GnssSvInfo> svInfo(nSatellites);
     for (int i = 0; i < nSatellites; ++i) {
