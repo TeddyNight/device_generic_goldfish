@@ -52,7 +52,7 @@ PRODUCT_VENDOR_PROPERTIES += \
 
 # Device modules
 PRODUCT_PACKAGES += \
-    android.hardware.drm-service.clearkey \
+    android.hardware.drm-service-lazy.clearkey \
     android.hardware.gatekeeper@1.0-service.software \
     android.hardware.usb-service.example \
     vulkan.ranchu \
@@ -156,7 +156,7 @@ PRODUCT_PACKAGES += \
     NavigationBarMode2ButtonOverlay \
 
 ifneq ($(EMULATOR_VENDOR_NO_GNSS),true)
-PRODUCT_PACKAGES += android.hardware.gnss@2.0-service.ranchu
+PRODUCT_PACKAGES += android.hardware.gnss-service.ranchu
 endif
 
 ifneq ($(EMULATOR_VENDOR_NO_SENSORS),true)
@@ -262,7 +262,6 @@ PRODUCT_COPY_FILES += \
     device/generic/goldfish/init.ranchu-net.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.ranchu-net.sh \
     device/generic/goldfish/init.ranchu.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.ranchu.rc \
     device/generic/goldfish/init.system_ext.rc:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/init/init.system_ext.rc \
-    device/generic/goldfish/fstab.ranchu:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.ranchu \
     device/generic/goldfish/ueventd.ranchu.rc:$(TARGET_COPY_OUT_VENDOR)/etc/ueventd.rc \
     device/generic/goldfish/input/virtio_input_rotary.idc:$(TARGET_COPY_OUT_VENDOR)/usr/idc/virtio_input_rotary.idc \
     device/generic/goldfish/input/qwerty2.idc:$(TARGET_COPY_OUT_VENDOR)/usr/idc/qwerty2.idc \
