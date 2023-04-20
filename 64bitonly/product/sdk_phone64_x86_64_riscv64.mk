@@ -1,5 +1,5 @@
 #
-# Copyright 2020 Arm Ltd. All rights reserved.
+# Copyright (C) 2023 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,14 @@
 # limitations under the License.
 #
 
-service mini_network /system/bin/mini_network.sh
-    class core
-    user root
-    oneshot
+# sdk_phone64_x86_64 with RISCV64 translated
+
+$(call inherit-product, device/generic/goldfish/64bitonly/product/sdk_phone64_x86_64.mk)
+
+# TODO(b/273954450): add RISCV64 translation support
+
+# Overrides
+PRODUCT_BRAND := Android
+PRODUCT_NAME := sdk_phone64_x86_64_riscv64
+PRODUCT_DEVICE := emu64xr
+PRODUCT_MODEL := Android SDK built for x86_64 with RISCV64 translated
