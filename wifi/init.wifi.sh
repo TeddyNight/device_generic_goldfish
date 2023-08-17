@@ -41,7 +41,7 @@
 #                                  | ***********  ***********
 #
 
-wifi_mac_prefix=`getprop net.wifi_mac_prefix`
+wifi_mac_prefix=`getprop net.wifi_mac_prefix 5555`
 if [ -n "$wifi_mac_prefix" ]; then
     /vendor/bin/mac80211_create_radios 2 $wifi_mac_prefix || exit 1
 fi
@@ -54,26 +54,35 @@ createns ${NAMESPACE}
 # to access the namespace.
 PID=$(</data/vendor/var/run/netns/${NAMESPACE}.pid)
 
-/vendor/bin/ip link set eth0 netns ${PID}
+eth0_addr=`/system/bin/ip a show dev eth0 | /system/bin/grep 'inet ' | /system/bin/awk '{print $2,$3,$4}'`
+eth0_gw=`/system/bin/ip r get 8.8.8.8 | /system/bin/head -n 1 | /system/bin/awk '{print $3}'`
+/system/bin/ip link set eth0 netns ${PID}
+execns ${NAMESPACE} /system/bin/ip link set eth0 up
+execns ${NAMESPACE} /system/bin/ip a add ${eth0_addr} dev eth0
+execns ${NAMESPACE} /system/bin/ip r add default via ${eth0_gw} dev eth0
 
-/vendor/bin/ip link add radio0 type veth peer name radio0-peer netns ${PID}
+/system/bin/ip link add radio0 type veth peer name radio0-peer netns ${PID}
 
 # Enable privacy addresses for radio0, this is done by the framework for wlan0
 sysctl -wq net.ipv6.conf.radio0.use_tempaddr=2
 
-execns ${NAMESPACE} /vendor/bin/ip link set radio0-peer up
+/system/bin/ip addr add 192.168.200.2/24 broadcast 192.168.200.255 dev radio0
+execns ${NAMESPACE} /system/bin/ip addr add 192.168.200.1/24 dev radio0-peer
+execns ${NAMESPACE} sysctl -wq net.ipv6.conf.all.forwarding=1
+execns ${NAMESPACE} /system/bin/ip link set radio0-peer up
 
-execns ${NAMESPACE} /vendor/bin/ip link set eth0 up
+/system/bin/ip link set radio0 up
 
-/vendor/bin/ip link set radio0 up
+execns ${NAMESPACE} /system/bin/iptables -w -W 50000 -t nat -A POSTROUTING -s 192.168.232.0/21 -o eth0 -j MASQUERADE
+execns ${NAMESPACE} /system/bin/iptables -w -W 50000 -t nat -A POSTROUTING -s 192.168.200.0/24 -o eth0 -j MASQUERADE
+/vendor/bin/iw phy phy`/vendor/bin/iw wlan1 info | /system/bin/grep wiphy | /system/bin/awk '{print $2}'` set netns $PID # HACKED
 
-execns ${NAMESPACE} /vendor/bin/ip link set wlan1 up
+execns ${NAMESPACE} /system/bin/ip addr add 192.168.232.1/21 dev wlan1
+execns ${NAMESPACE} /system/bin/ip link set wlan1 mtu 1400
+execns ${NAMESPACE} /system/bin/ip link set wlan1 up
+#setprop ctl.start netmgr
 
-/vendor/bin/iw phy phy1 set netns $PID
-
-setprop ctl.start netmgr
-
-setprop ctl.start wifi_forwarder
+#setprop ctl.start wifi_forwarder
 
 # If this is a clean boot we need to copy the hostapd configuration file to the
 # data partition where netmgr can change it if needed. If it already exists we
@@ -88,3 +97,6 @@ fi
 setprop ctl.start emu_hostapd
 
 ifconfig radio0 -multicast
+
+setprop ctl.start wpa_supplicant
+setprop ctl.start dhcpserver
